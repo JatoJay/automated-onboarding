@@ -46,13 +46,15 @@ export class IngestionSimpleController {
   }
 
   private async getOrgId(): Promise<string> {
-    let org = await this.prisma.organization.findFirst();
+    let org = await this.prisma.organization.findFirst({
+      where: { slug: 'acme-corp' },
+    });
+    if (!org) {
+      org = await this.prisma.organization.findFirst();
+    }
     if (!org) {
       org = await this.prisma.organization.create({
-        data: {
-          name: 'Default Organization',
-          slug: 'default',
-        },
+        data: { name: 'Acme Corporation', slug: 'acme-corp' },
       });
     }
     return org.id;
@@ -165,6 +167,31 @@ export class IngestionSimpleController {
   @Delete(':documentId')
   deleteDocument(@Param('documentId') documentId: string) {
     return this.ingestionService.deleteDocument(documentId);
+  }
+
+  @Post('index-all-pending')
+  async indexAllPending() {
+    const orgId = await this.getOrgId();
+    const pendingDocs = await this.prisma.knowledgeDocument.findMany({
+      where: { organizationId: orgId, status: 'PENDING' },
+    });
+
+    const results = { indexed: 0, failed: 0, errors: [] as string[] };
+
+    for (const doc of pendingDocs) {
+      try {
+        await this.ingestionService.reindexDocument(doc.id);
+        results.indexed++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`${doc.title}: ${error.message}`);
+      }
+    }
+
+    return {
+      message: `Indexed ${results.indexed} documents, ${results.failed} failed`,
+      ...results,
+    };
   }
 }
 
