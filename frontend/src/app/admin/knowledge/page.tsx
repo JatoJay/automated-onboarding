@@ -447,7 +447,9 @@ export default function KnowledgeBasePage() {
                           <h3 className="font-medium flex items-center gap-2">
                             {doc.title}
                             {doc.isOrgWide && (
-                              <Globe className="h-4 w-4 text-blue-500" title="Organization-wide" />
+                              <span title="Organization-wide">
+                                <Globe className="h-4 w-4 text-blue-500" />
+                              </span>
                             )}
                           </h3>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground">
