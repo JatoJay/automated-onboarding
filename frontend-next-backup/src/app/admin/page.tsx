@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FileText, Globe, Users, BarChart3, Settings, BookOpen } from 'lucide-react';
+import { FileText, Globe, Users, BarChart3, Settings, BookOpen, Building2 } from 'lucide-react';
 
 const adminLinks = [
   {
@@ -18,6 +18,13 @@ const adminLinks = [
     description: 'Connect third-party documentation (Notion, Confluence, URLs)',
     icon: Globe,
     color: 'text-green-500',
+  },
+  {
+    href: '/admin/departments',
+    title: 'Departments',
+    description: 'Manage departments and their knowledge bases',
+    icon: Building2,
+    color: 'text-indigo-500',
   },
   {
     href: '/admin/employees',

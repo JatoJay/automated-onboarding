@@ -1,4 +1,4 @@
-'use client';
+
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Circle, Clock, AlertCircle } from 'lucide-react';

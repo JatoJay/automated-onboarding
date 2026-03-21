@@ -25,4 +25,9 @@ export class AiController {
   getSuggestions(@Request() req: any) {
     return this.aiService.getSuggestions(req.user.id);
   }
+
+  @Get('onboarding-status')
+  getOnboardingStatus(@Request() req: any) {
+    return this.aiService.getOnboardingStatus(req.user.id);
+  }
 }

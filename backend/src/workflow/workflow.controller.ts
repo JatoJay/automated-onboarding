@@ -52,4 +52,22 @@ export class WorkflowController {
   deleteTaskTemplate(@Param('id') id: string) {
     return this.workflowService.deleteTaskTemplate(id);
   }
+
+  @Post('plans/create-standard')
+  createStandardPlan(@Body() body: { departmentId?: string }) {
+    return this.workflowService.createStandard30_60_90Plan(body.departmentId);
+  }
+
+  @Get('employees/:employeeId/milestones')
+  getEmployeeMilestones(@Param('employeeId') employeeId: string) {
+    return this.workflowService.getEmployeeMilestones(employeeId);
+  }
+
+  @Post('employees/:employeeId/assign-plan')
+  assignPlanToEmployee(
+    @Param('employeeId') employeeId: string,
+    @Body() body: { planId?: string },
+  ) {
+    return this.workflowService.assignStandardPlanToEmployee(employeeId, body.planId);
+  }
 }

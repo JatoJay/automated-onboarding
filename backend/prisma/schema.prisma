@@ -67,6 +67,7 @@ model Organization {
   departments        Department[]
   knowledgeDocuments KnowledgeDocument[]
   dataSources        DataSource[]
+  employeeInvites    EmployeeInvite[]
 }
 
 model User {
@@ -85,6 +86,7 @@ model User {
   managedEmployees Employee[]      @relation("ManagerRelation")
   chatMessages     ChatMessage[]
   taskAssignments  Task[]          @relation("AssignedBy")
+  createdInvites   EmployeeInvite[]
 }
 
 model Department {
@@ -100,6 +102,7 @@ model Department {
   knowledgeDocuments KnowledgeDocument[]
   dataSources        DataSource[]
   employeeAccess     EmployeeDepartmentAccess[]
+  employeeInvites    EmployeeInvite[]
 
   @@unique([name, organizationId])
 }
@@ -256,4 +259,28 @@ model DocumentChunk {
   document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model EmployeeInvite {
+  id             String    @id @default(cuid())
+  token          String    @unique @default(cuid())
+  email          String
+  firstName      String
+  lastName       String
+  jobTitle       String
+  departmentId   String
+  managerId      String?
+  startDate      DateTime
+  organizationId String
+  createdById    String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  department   Department   @relation(fields: [departmentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User         @relation(fields: [createdById], references: [id])
+
+  @@index([token])
+  @@index([email])
 }

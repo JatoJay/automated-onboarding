@@ -1,16 +1,20 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TasksController {
-  constructor(private tasksService: TasksService) {}
+  constructor(
+    private tasksService: TasksService,
+    private prisma: PrismaService,
+  ) {}
 
   @Post()
   createTask(@Body() dto: CreateTaskDto) {
@@ -46,5 +50,18 @@ export class TasksController {
     @Param('planId') planId: string,
   ) {
     return this.tasksService.assignTasksFromPlan(employeeId, planId);
+  }
+
+  @Get('my-tasks')
+  async getMyTasks(@Request() req: any, @Query('status') status?: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    if (!employee) {
+      return [];
+    }
+
+    return this.tasksService.getEmployeeTasks(employee.id, status);
   }
 }

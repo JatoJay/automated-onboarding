@@ -46,8 +46,16 @@ export class IngestionSimpleController {
   }
 
   private async getOrgId(): Promise<string> {
-    const org = await this.prisma.organization.findFirst();
-    return org?.id || this.defaultOrgId;
+    let org = await this.prisma.organization.findFirst();
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: 'Default Organization',
+          slug: 'default',
+        },
+      });
+    }
+    return org.id;
   }
 
   @Post('upload')
@@ -171,8 +179,16 @@ export class ExternalDocsSimpleController {
   ) {}
 
   private async getOrgId(): Promise<string> {
-    const org = await this.prisma.organization.findFirst();
-    return org?.id || 'default';
+    let org = await this.prisma.organization.findFirst();
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: 'Default Organization',
+          slug: 'default',
+        },
+      });
+    }
+    return org.id;
   }
 
   @Post('crawl')
@@ -250,8 +266,16 @@ export class ConnectorsSimpleController {
   ) {}
 
   private async getOrgId(): Promise<string> {
-    const org = await this.prisma.organization.findFirst();
-    return org?.id || 'default';
+    let org = await this.prisma.organization.findFirst();
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: 'Default Organization',
+          slug: 'default',
+        },
+      });
+    }
+    return org.id;
   }
 
   @Post('playwright/crawl')

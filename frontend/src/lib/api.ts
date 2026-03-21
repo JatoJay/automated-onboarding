@@ -1,28 +1,22 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 class ApiClient {
   private token: string | null = null;
 
   setToken(token: string) {
     this.token = token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token);
-    }
+    localStorage.setItem('token', token);
   }
 
   getToken(): string | null {
     if (this.token) return this.token;
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('token');
-    }
+    this.token = localStorage.getItem('token');
     return this.token;
   }
 
   clearToken() {
     this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-    }
+    localStorage.removeItem('token');
   }
 
   private async request<T>(
@@ -63,21 +57,67 @@ class ApiClient {
     return data;
   }
 
-  async register(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }) {
+  async validateInvite(token: string) {
+    return this.request<{
+      email: string;
+      firstName: string;
+      lastName: string;
+      jobTitle: string;
+      department: string;
+      organization: string;
+      startDate: string;
+    }>(`/auth/invites/validate?token=${token}`);
+  }
+
+  async registerWithInvite(token: string, password: string) {
     const result = await this.request<{
       accessToken: string;
       refreshToken: string;
-    }>('/auth/register', {
+    }>('/auth/register-with-invite', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ token, password }),
     });
     this.setToken(result.accessToken);
     return result;
+  }
+
+  async createInvite(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    departmentId: string;
+    managerId?: string;
+    startDate: string;
+  }) {
+    return this.request<{
+      id: string;
+      token: string;
+      email: string;
+      inviteLink: string;
+      expiresAt: string;
+    }>('/auth/invites', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listInvites() {
+    return this.request<Array<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      department: { name: string };
+      createdBy: { firstName: string; lastName: string };
+      expiresAt: string;
+      usedAt: string | null;
+      createdAt: string;
+    }>>('/auth/invites');
+  }
+
+  async revokeInvite(id: string) {
+    return this.request(`/auth/invites/${id}`, { method: 'DELETE' });
   }
 
   async getMe() {
@@ -109,7 +149,7 @@ class ApiClient {
   }
 
   async getMyTasks(status?: string) {
-    return this.request<any[]>(`/employees/me/tasks${status ? `?status=${status}` : ''}`);
+    return this.request<any[]>(`/tasks/my-tasks${status ? `?status=${status}` : ''}`);
   }
 
   async updateTask(taskId: string, data: { status?: string }) {
@@ -150,7 +190,6 @@ class ApiClient {
     return this.request<string[]>('/chat/suggestions');
   }
 
-  // Document Management
   async getDocuments(params?: {
     category?: string;
     status?: string;
@@ -247,7 +286,6 @@ class ApiClient {
     });
   }
 
-  // External Docs / Data Sources
   async getDataSources() {
     return this.request<Array<{
       id: string;
@@ -380,7 +418,6 @@ class ApiClient {
     return this.request(`/external-docs/${dataSourceId}`, { method: 'DELETE' });
   }
 
-  // Knowledge Search (for testing)
   async searchKnowledge(query: string, limit?: number) {
     return this.request<Array<{
       id: string;
@@ -394,7 +431,6 @@ class ApiClient {
     });
   }
 
-  // Department Management
   async getDepartments() {
     return this.request<Array<{
       id: string;
@@ -460,7 +496,6 @@ class ApiClient {
     return this.request(`/departments/${id}`, { method: 'DELETE' });
   }
 
-  // Employee Management (HR)
   async getEmployees(params?: { departmentId?: string; status?: string }) {
     const query = new URLSearchParams();
     if (params?.departmentId) query.set('departmentId', params.departmentId);
@@ -556,6 +591,131 @@ class ApiClient {
 
   async deleteEmployee(id: string) {
     return this.request(`/admin/employees/${id}`, { method: 'DELETE' });
+  }
+
+  async getOnboardingStatus() {
+    return this.request<{
+      phase: string;
+      daysInRole: number;
+      milestones: {
+        total: number;
+        completed: number;
+        pending: number;
+        overdue: number;
+        completionRate: number;
+        nextTask: any | null;
+      };
+      employee: {
+        name: string;
+        department: string;
+        jobTitle: string;
+        startDate: string;
+        manager: string | null;
+      };
+    }>('/chat/onboarding-status');
+  }
+
+  async getWorkflowPlans(departmentId?: string) {
+    const query = departmentId ? `?departmentId=${departmentId}` : '';
+    return this.request<Array<{
+      id: string;
+      name: string;
+      description?: string;
+      isDefault: boolean;
+      department?: { id: string; name: string };
+      _count: { taskTemplates: number };
+    }>>(`/admin/workflows/plans${query}`);
+  }
+
+  async getWorkflowPlan(id: string) {
+    return this.request<{
+      id: string;
+      name: string;
+      description?: string;
+      isDefault: boolean;
+      taskTemplates: Array<{
+        id: string;
+        title: string;
+        description?: string;
+        type: string;
+        daysFromStart: number;
+        durationDays: number;
+        order: number;
+        isRequired: boolean;
+      }>;
+      department?: { id: string; name: string };
+    }>(`/admin/workflows/plans/${id}`);
+  }
+
+  async createWorkflowPlan(data: {
+    name: string;
+    description?: string;
+    departmentId?: string;
+    isDefault?: boolean;
+  }) {
+    return this.request('/admin/workflows/plans', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createStandardPlan(departmentId?: string) {
+    return this.request('/admin/workflows/plans/create-standard', {
+      method: 'POST',
+      body: JSON.stringify({ departmentId }),
+    });
+  }
+
+  async addTaskTemplate(planId: string, data: {
+    title: string;
+    description?: string;
+    type: string;
+    daysFromStart?: number;
+    durationDays?: number;
+    isRequired?: boolean;
+  }) {
+    return this.request(`/admin/workflows/plans/${planId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteWorkflowPlan(id: string) {
+    return this.request(`/admin/workflows/plans/${id}`, { method: 'DELETE' });
+  }
+
+  async getEmployeeMilestones(employeeId: string) {
+    return this.request<{
+      employeeId: string;
+      daysInRole: number;
+      currentMilestone: string;
+      milestones: Array<{
+        name: string;
+        targetDay: number;
+        tasksCompleted: number;
+        tasksTotal: number;
+        completionRate: number;
+        isComplete: boolean;
+        isCurrent: boolean;
+        tasks: any[];
+      }>;
+      overallProgress: {
+        completed: number;
+        total: number;
+        percentage: number;
+      };
+    }>(`/admin/workflows/employees/${employeeId}/milestones`);
+  }
+
+  async assignPlanToEmployee(employeeId: string, planId?: string) {
+    return this.request<{
+      assigned: boolean;
+      planName: string;
+      tasksCreated: number;
+    }>(`/admin/workflows/employees/${employeeId}/assign-plan`, {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+    });
   }
 }
 

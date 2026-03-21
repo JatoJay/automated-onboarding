@@ -1,58 +1,125 @@
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   MessageSquare,
   CheckSquare,
   Settings,
   LogOut,
+  BarChart3,
+  Building2,
+  Users,
+  FileText,
+  Globe,
+  BookOpen,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore } from '@/stores/auth';
+import { useState } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/chat', label: 'AI Assistant', icon: MessageSquare },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
-  { href: '/admin', label: 'Admin', icon: Settings, adminOnly: true },
+];
+
+const adminNavItems = [
+  { href: '/admin/departments', label: 'Departments', icon: Building2 },
+  { href: '/admin/employees', label: 'Employees', icon: Users },
+  { href: '/admin/knowledge', label: 'Knowledge Base', icon: FileText },
+  { href: '/admin/sources', label: 'External Sources', icon: Globe },
+  { href: '/admin/workflows', label: 'Workflows', icon: BookOpen },
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'HR';
+  const [adminExpanded, setAdminExpanded] = useState(location.pathname.startsWith('/admin'));
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const isAdminActive = location.pathname.startsWith('/admin');
 
   return (
-    <aside className="flex flex-col w-64 bg-card border-r h-screen">
+    <aside className="flex flex-col w-64 glass-sidebar h-screen">
       <div className="p-6">
         <h1 className="text-xl font-bold">Onboarding</h1>
       </div>
 
-      <nav className="flex-1 px-4">
-        {navItems
-          .filter((item) => !item.adminOnly || isAdmin)
-          .map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+      <nav className="flex-1 px-4 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent'
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {item.label}
+            </Link>
+          );
+        })}
+
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setAdminExpanded(!adminExpanded)}
+              className={cn(
+                'flex items-center justify-between w-full px-4 py-3 rounded-lg mb-1 transition-colors',
+                isAdminActive ? 'bg-accent' : 'hover:bg-accent'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5" />
+                <span>Admin</span>
+              </div>
+              <ChevronDown
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
+                  'h-4 w-4 transition-transform',
+                  adminExpanded && 'rotate-180'
                 )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
+              />
+            </button>
+
+            {adminExpanded && (
+              <div className="ml-4 border-l pl-2 mb-2">
+                {adminNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-accent text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t">
@@ -69,7 +136,7 @@ export function Sidebar() {
           </div>
         </div>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full"
         >
           <LogOut className="h-4 w-4" />

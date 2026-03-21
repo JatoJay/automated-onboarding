@@ -45,8 +45,16 @@ export class DepartmentsController {
   constructor(private prisma: PrismaService) {}
 
   private async getOrgId(): Promise<string> {
-    const org = await this.prisma.organization.findFirst();
-    return org?.id || 'default';
+    let org = await this.prisma.organization.findFirst();
+    if (!org) {
+      org = await this.prisma.organization.create({
+        data: {
+          name: 'Default Organization',
+          slug: 'default',
+        },
+      });
+    }
+    return org.id;
   }
 
   @Get()

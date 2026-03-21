@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 interface TaskTemplate {
   id: string;
   title: string;
@@ -27,12 +29,31 @@ interface OnboardingPlan {
 
 const taskTypes = ['DOCUMENT', 'FORM', 'TRAINING', 'MEETING', 'APPROVAL'];
 
+interface NewTask {
+  title: string;
+  description: string;
+  type: string;
+  daysFromStart: number;
+  isRequired: boolean;
+}
+
+const defaultNewTask: NewTask = {
+  title: '',
+  description: '',
+  type: 'DOCUMENT',
+  daysFromStart: 0,
+  isRequired: true,
+};
+
 export default function WorkflowsPage() {
   const [plans, setPlans] = useState<OnboardingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlan, setNewPlan] = useState({ name: '', description: '' });
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskModalPlanId, setTaskModalPlanId] = useState<string | null>(null);
+  const [newTask, setNewTask] = useState<NewTask>(defaultNewTask);
 
   useEffect(() => {
     loadPlans();
@@ -41,7 +62,7 @@ export default function WorkflowsPage() {
   const loadPlans = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/admin/workflows/plans', {
+      const res = await fetch(`${API_BASE}/admin/workflows/plans`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -59,7 +80,7 @@ export default function WorkflowsPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/admin/workflows/plans', {
+      const res = await fetch(`${API_BASE}/admin/workflows/plans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +102,7 @@ export default function WorkflowsPage() {
     if (!confirm('Delete this onboarding plan?')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:4000/admin/workflows/plans/${id}`, {
+      await fetch(`${API_BASE}/admin/workflows/plans/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,25 +112,35 @@ export default function WorkflowsPage() {
     }
   };
 
-  const handleAddTask = async (planId: string) => {
-    const title = prompt('Task title:');
-    if (!title) return;
+  const openAddTaskModal = (planId: string) => {
+    setTaskModalPlanId(planId);
+    setNewTask(defaultNewTask);
+    setShowTaskModal(true);
+  };
+
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskModalPlanId || !newTask.title.trim()) return;
 
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:4000/admin/workflows/plans/${planId}/tasks`, {
+      await fetch(`${API_BASE}/admin/workflows/plans/${taskModalPlanId}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title,
-          type: 'DOCUMENT',
-          daysFromStart: 0,
-          isRequired: true,
+          title: newTask.title,
+          description: newTask.description || undefined,
+          type: newTask.type,
+          daysFromStart: newTask.daysFromStart,
+          isRequired: newTask.isRequired,
         }),
       });
+      setShowTaskModal(false);
+      setTaskModalPlanId(null);
+      setNewTask(defaultNewTask);
       loadPlans();
     } catch (error) {
       console.error('Failed to add task:', error);
@@ -119,7 +150,7 @@ export default function WorkflowsPage() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:4000/admin/workflows/tasks/${taskId}`, {
+      await fetch(`${API_BASE}/admin/workflows/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -241,7 +272,7 @@ export default function WorkflowsPage() {
                   <Button
                     variant="outline"
                     className="w-full mt-4"
-                    onClick={() => handleAddTask(plan.id)}
+                    onClick={() => openAddTaskModal(plan.id)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Task
@@ -307,6 +338,103 @@ export default function WorkflowsPage() {
                   Cancel
                 </Button>
                 <Button type="submit">Create Plan</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Add Task</h2>
+            <form onSubmit={handleAddTask}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title *</label>
+                  <Input
+                    value={newTask.title}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, title: e.target.value })
+                    }
+                    placeholder="e.g., Complete HR paperwork"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <Input
+                    value={newTask.description}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, description: e.target.value })
+                    }
+                    placeholder="Additional details about this task"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <select
+                    value={newTask.type}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, type: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {taskTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Days from start
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={newTask.daysFromStart}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, daysFromStart: parseInt(e.target.value) || 0 })
+                    }
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    When should this task be due relative to the employee's start date?
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isRequired"
+                    checked={newTask.isRequired}
+                    onChange={(e) =>
+                      setNewTask({ ...newTask, isRequired: e.target.checked })
+                    }
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="isRequired" className="text-sm font-medium">
+                    Required task
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowTaskModal(false);
+                    setTaskModalPlanId(null);
+                    setNewTask(defaultNewTask);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">Add Task</Button>
               </div>
             </form>
           </div>
