@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  HR
+  ADMIN
+  ORG_ADMIN
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+enum TaskType {
+  DOCUMENT
+  FORM
+  TRAINING
+  MEETING
+  APPROVAL
+}
+
+enum OnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  INDEXED
+  FAILED
+}
+
+enum DocumentType {
+  PDF
+  DOCX
+  TXT
+  MD
+  HTML
+  URL
+  CODE
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  domain      String?
+  logo        String?
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users              User[]
+  departments        Department[]
+  knowledgeDocuments KnowledgeDocument[]
+  dataSources        DataSource[]
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole      @default(EMPLOYEE)
+  organizationId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization     Organization?   @relation(fields: [organizationId], references: [id])
+  employee         Employee?
+  managedEmployees Employee[]      @relation("ManagerRelation")
+  chatMessages     ChatMessage[]
+  taskAssignments  Task[]          @relation("AssignedBy")
+}
+
+model Department {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  description    String?
+  createdAt      DateTime @default(now())
+
+  organization       Organization              @relation(fields: [organizationId], references: [id])
+  employees          Employee[]
+  onboardingPlans    OnboardingPlan[]
+  knowledgeDocuments KnowledgeDocument[]
+  dataSources        DataSource[]
+  employeeAccess     EmployeeDepartmentAccess[]
+
+  @@unique([name, organizationId])
+}
+
+model Employee {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  departmentId     String
+  managerId        String?
+  jobTitle         String
+  startDate        DateTime
+  onboardingStatus OnboardingStatus @default(NOT_STARTED)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User                       @relation(fields: [userId], references: [id])
+  department       Department                 @relation(fields: [departmentId], references: [id])
+  manager          User?                      @relation("ManagerRelation", fields: [managerId], references: [id])
+  tasks            Task[]
+  departmentAccess EmployeeDepartmentAccess[]
+}
+
+model EmployeeDepartmentAccess {
+  id           String   @id @default(cuid())
+  employeeId   String
+  departmentId String
+  grantedById  String?
+  grantedAt    DateTime @default(now())
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, departmentId])
+  @@index([employeeId])
+  @@index([departmentId])
+}
+
+model OnboardingPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  departmentId String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  taskTemplates TaskTemplate[]
+}
+
+model TaskTemplate {
+  id               String   @id @default(cuid())
+  onboardingPlanId String
+  title            String
+  description      String?
+  type             TaskType
+  daysFromStart    Int      @default(0)
+  durationDays     Int      @default(1)
+  order            Int      @default(0)
+  isRequired       Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  onboardingPlan OnboardingPlan @relation(fields: [onboardingPlanId], references: [id])
+  dependencies   TaskTemplate[] @relation("TaskDependencies")
+  dependentOn    TaskTemplate[] @relation("TaskDependencies")
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  employeeId   String
+  title        String
+  description  String?
+  type         TaskType
+  status       TaskStatus @default(PENDING)
+  dueDate      DateTime?
+  completedAt  DateTime?
+  assignedById String?
+  metadata     Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  assignedBy User?    @relation("AssignedBy", fields: [assignedById], references: [id])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String
+  content   String
+  sources   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DataSource {
+  id             String   @id @default(cuid())
+  organizationId String
+  departmentId   String?
+  isOrgWide      Boolean  @default(false)
+  name           String
+  type           String
+  config         Json?
+  lastSyncAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  department         Department?         @relation(fields: [departmentId], references: [id])
+  knowledgeDocuments KnowledgeDocument[]
+
+  @@index([departmentId])
+}
+
+model KnowledgeDocument {
+  id             String         @id @default(cuid())
+  organizationId String
+  departmentId   String?
+  dataSourceId   String?
+  title          String
+  content        String
+  category       String
+  documentType   DocumentType   @default(TXT)
+  status         DocumentStatus @default(PENDING)
+  fileUrl        String?
+  fileSize       Int?
+  chunkCount     Int            @default(0)
+  errorMessage   String?
+  metadata       Json?
+  isOrgWide      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  dataSource   DataSource?   @relation(fields: [dataSourceId], references: [id])
+  chunks       DocumentChunk[]
+
+  @@index([departmentId])
+  @@index([organizationId, departmentId])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  content    String
+  chunkIndex Int
+  tokenCount Int?
+  qdrantId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
