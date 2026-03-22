@@ -186,6 +186,36 @@ class ApiClient {
     return this.request(`/tasks/${taskId}/complete`, { method: 'POST' });
   }
 
+  async getTask(taskId: string) {
+    return this.request<{
+      id: string;
+      title: string;
+      description?: string;
+      type: string;
+      status: string;
+      dueDate?: string;
+      employee: { id: string; user: { firstName: string; lastName: string } };
+    }>(`/tasks/${taskId}`);
+  }
+
+  async createTask(data: {
+    employeeId: string;
+    title: string;
+    description?: string;
+    type: string;
+    dueDate?: string;
+  }) {
+    return this.request('/tasks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getEmployeeTasks(employeeId: string, status?: string) {
+    const query = status ? `?status=${status}` : '';
+    return this.request<any[]>(`/tasks/employee/${employeeId}${query}`);
+  }
+
   async sendChatMessage(message: string, departmentId?: string) {
     return this.request<{
       message: string;
@@ -298,6 +328,23 @@ class ApiClient {
     return this.request(`/documents/${documentId}/reindex`, { method: 'POST' });
   }
 
+  async uploadDocumentFromUrl(data: {
+    url: string;
+    title?: string;
+    category: string;
+    departmentId?: string;
+    isOrgWide?: boolean;
+  }) {
+    return this.request('/documents/upload-url', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async indexAllPending() {
+    return this.request('/documents/index-all-pending', { method: 'POST' });
+  }
+
   async getCategories() {
     return this.request<Array<{ category: string; count: number }>>('/documents/categories');
   }
@@ -329,6 +376,18 @@ class ApiClient {
     maxDepth?: number;
   }) {
     return this.request('/external-docs/crawl', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async crawlSitemap(data: {
+    name: string;
+    sitemapUrl: string;
+    category: string;
+    maxPages?: number;
+  }) {
+    return this.request('/external-docs/crawl-sitemap', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -537,6 +596,14 @@ class ApiClient {
 
   async getDepartmentHierarchy() {
     return this.request<any[]>('/departments/hierarchy');
+  }
+
+  async getDepartmentManagers(departmentId: string) {
+    return this.request<Array<{
+      id: string;
+      user: { id: string; firstName: string; lastName: string; email: string };
+      jobTitle: string;
+    }>>(`/departments/${departmentId}/managers`);
   }
 
   async getMyOrgChart() {
@@ -766,6 +833,17 @@ class ApiClient {
 
   async deleteWorkflowPlan(id: string) {
     return this.request(`/admin/workflows/plans/${id}`, { method: 'DELETE' });
+  }
+
+  async reorderTaskTemplates(planId: string, taskIds: string[]) {
+    return this.request(`/admin/workflows/plans/${planId}/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ taskIds }),
+    });
+  }
+
+  async deleteTaskTemplate(taskId: string) {
+    return this.request(`/admin/workflows/tasks/${taskId}`, { method: 'DELETE' });
   }
 
   async getEmployeeMilestones(employeeId: string) {
