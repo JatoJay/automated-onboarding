@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { MessageSquare, ArrowRight, Users, CheckCircle, Clock, FileText, Settings } from 'lucide-react';
+import { MessageSquare, ArrowRight, Users, CheckCircle, Clock, FileText, Settings, UserPlus, Briefcase, Calendar } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { ProgressCard } from '@/components/dashboard/progress-card';
@@ -25,12 +25,25 @@ interface DepartmentStats {
   completionRate: number;
 }
 
+interface NewHire {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle: string;
+  department: string;
+  startDate: string;
+  onboardingStatus: string;
+  progress: number;
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'HR';
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([]);
+  const [newHires, setNewHires] = useState<NewHire[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
 
   const { data: myTasks = [] } = useQuery({
@@ -109,6 +122,32 @@ export default function DashboardPage() {
           completionRate: Math.floor(Math.random() * 40) + 60,
         }))
       );
+
+      const recentHires = employees
+        .filter((e: any) =>
+          e.onboardingStatus === 'NOT_STARTED' ||
+          e.onboardingStatus === 'IN_PROGRESS'
+        )
+        .sort((a: any, b: any) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        )
+        .slice(0, 5)
+        .map((e: any) => {
+          const totalTasks = e.tasks?.length || 0;
+          const completedTasks = e.tasks?.filter((t: any) => t.status === 'COMPLETED').length || 0;
+          return {
+            id: e.id,
+            firstName: e.user.firstName,
+            lastName: e.user.lastName,
+            email: e.user.email,
+            jobTitle: e.jobTitle,
+            department: e.department?.name || 'Unassigned',
+            startDate: e.startDate,
+            onboardingStatus: e.onboardingStatus,
+            progress: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+          };
+        });
+      setNewHires(recentHires);
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
@@ -288,6 +327,74 @@ export default function DashboardPage() {
             </Card>
           </div>
         </>
+      )}
+
+      {isAdmin && newHires.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600" />
+              New Hires
+            </CardTitle>
+            <Link to="/admin/employees">
+              <Button variant="ghost" size="sm">
+                View All <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {newHires.map((hire) => (
+                <div
+                  key={hire.id}
+                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-lg border border-blue-100"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shrink-0">
+                    {hire.firstName[0]}{hire.lastName[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900">
+                        {hire.firstName} {hire.lastName}
+                      </p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        hire.onboardingStatus === 'IN_PROGRESS'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {hire.onboardingStatus === 'IN_PROGRESS' ? 'Onboarding' : 'Not Started'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <span className="flex items-center gap-1">
+                        <Briefcase className="h-3 w-3" />
+                        {hire.jobTitle}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {hire.department}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Started {new Date(hire.startDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xl font-bold text-blue-600">{hire.progress}%</div>
+                    <div className="text-xs text-gray-500">complete</div>
+                    <div className="w-20 bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className="bg-blue-600 h-1.5 rounded-full transition-all"
+                        style={{ width: `${hire.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {!isAdmin && (

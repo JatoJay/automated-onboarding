@@ -97,7 +97,9 @@ export class EmployeeManagementController {
         departmentAccess: {
           include: { department: { select: { id: true, name: true } } },
         },
-        _count: { select: { tasks: true } },
+        tasks: {
+          select: { id: true, status: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
