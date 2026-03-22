@@ -68,6 +68,7 @@ export class WorkflowService {
       where: departmentId ? { departmentId } : {},
       include: {
         department: true,
+        taskTemplates: { orderBy: { order: 'asc' } },
         _count: { select: { taskTemplates: true } },
       },
       orderBy: { name: 'asc' },
