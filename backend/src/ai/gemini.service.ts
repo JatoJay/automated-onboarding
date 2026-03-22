@@ -20,10 +20,18 @@ export class GeminiService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    this.vertexAI = new VertexAI({
-      project: this.projectId,
-      location: this.location,
-    });
+    if (!this.projectId) {
+      console.warn('GOOGLE_CLOUD_PROJECT not set, GeminiService will not be available');
+      return;
+    }
+    try {
+      this.vertexAI = new VertexAI({
+        project: this.projectId,
+        location: this.location,
+      });
+    } catch (error) {
+      console.error('Failed to initialize VertexAI:', error);
+    }
   }
 
   async generateChatResponse(
