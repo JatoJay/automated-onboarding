@@ -33,10 +33,19 @@ export default function DashboardPage() {
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['tasks', 'pending'],
+  const { data: myTasks = [] } = useQuery({
+    queryKey: ['myTasks', 'pending'],
     queryFn: () => api.getMyTasks('PENDING'),
+    enabled: !isAdmin,
   });
+
+  const { data: allTasksData } = useQuery({
+    queryKey: ['allTasks', 'pending'],
+    queryFn: () => api.getAllTasks({ status: 'PENDING', limit: 5 }),
+    enabled: isAdmin,
+  });
+
+  const tasks = isAdmin ? (allTasksData?.tasks || []) : myTasks;
 
   const { data: suggestions = [] } = useQuery({
     queryKey: ['chatSuggestions'],
@@ -316,7 +325,7 @@ export default function DashboardPage() {
                 Ask our AI assistant anything about your onboarding
               </p>
               <div className="flex flex-wrap gap-2">
-                {suggestions.slice(0, 3).map((suggestion, i) => (
+                {suggestions.slice(0, 3).map((suggestion: string, i: number) => (
                   <Link key={i} to="/chat">
                     <Button variant="outline" size="sm">
                       {suggestion}

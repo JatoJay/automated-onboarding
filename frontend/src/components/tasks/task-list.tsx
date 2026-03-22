@@ -14,6 +14,10 @@ interface Task {
   type: string;
   status: string;
   dueDate?: string;
+  employee?: {
+    id: string;
+    user: { firstName: string; lastName: string; email: string };
+  };
 }
 
 const statusIcons = {
@@ -30,14 +34,15 @@ const statusColors = {
   BLOCKED: 'text-red-500',
 };
 
-export function TaskList({ tasks }: { tasks: Task[] }) {
+export function TaskList({ tasks, showEmployee = false }: { tasks: Task[]; showEmployee?: boolean }) {
   const queryClient = useQueryClient();
 
   const updateTask = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.updateTask(id, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['myTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['allTasks'] });
       queryClient.invalidateQueries({ queryKey: ['progress'] });
     },
   });
@@ -45,7 +50,8 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
   const completeTask = useMutation({
     mutationFn: (id: string) => api.completeTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['myTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['allTasks'] });
       queryClient.invalidateQueries({ queryKey: ['progress'] });
     },
   });
@@ -73,11 +79,16 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
               <div className="flex items-start gap-4">
                 <StatusIcon className={cn('h-5 w-5 mt-0.5', statusColor)} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-medium">{task.title}</h3>
                     <span className="text-xs px-2 py-0.5 bg-secondary rounded">
                       {task.type}
                     </span>
+                    {showEmployee && task.employee && (
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                        {task.employee.user.firstName} {task.employee.user.lastName}
+                      </span>
+                    )}
                   </div>
                   {task.description && (
                     <p className="text-sm text-muted-foreground mt-1">

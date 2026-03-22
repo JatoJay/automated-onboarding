@@ -64,7 +64,7 @@ export function ChatInterface() {
               Ask me anything about your onboarding process
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
-              {suggestions.map((suggestion, i) => (
+              {suggestions.map((suggestion: string, i: number) => (
                 <Button
                   key={i}
                   variant="outline"

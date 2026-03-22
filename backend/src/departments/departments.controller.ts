@@ -23,6 +23,16 @@ class CreateDepartmentDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  headId?: string;
 }
 
 class UpdateDepartmentDto {
@@ -35,6 +45,22 @@ class UpdateDepartmentDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  headId?: string;
+}
+
+class SetDepartmentHeadDto {
+  @ApiProperty()
+  @IsString()
+  headId: string;
 }
 
 @ApiTags('departments')
@@ -63,11 +89,18 @@ export class DepartmentsController {
     return this.prisma.department.findMany({
       where: { organizationId: orgId },
       include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        parent: {
+          select: { id: true, name: true },
+        },
         _count: {
           select: {
             employees: true,
             knowledgeDocuments: true,
             dataSources: true,
+            children: true,
           },
         },
       },
@@ -75,14 +108,73 @@ export class DepartmentsController {
     });
   }
 
+  @Get('hierarchy')
+  async getDepartmentHierarchy() {
+    const orgId = await this.getOrgId();
+    const departments = await this.prisma.department.findMany({
+      where: { organizationId: orgId },
+      include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        employees: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+            manager: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const buildTree = (parentId: string | null): any[] => {
+      return departments
+        .filter((d) => d.parentId === parentId)
+        .map((dept) => ({
+          id: dept.id,
+          name: dept.name,
+          description: dept.description,
+          head: dept.head,
+          employees: dept.employees.map((e) => ({
+            id: e.id,
+            userId: e.userId,
+            firstName: e.user.firstName,
+            lastName: e.user.lastName,
+            email: e.user.email,
+            jobTitle: e.jobTitle,
+            manager: e.manager,
+          })),
+          children: buildTree(dept.id),
+        }));
+    };
+
+    return buildTree(null);
+  }
+
   @Get(':id')
   async getDepartment(@Param('id') id: string) {
     return this.prisma.department.findUnique({
       where: { id },
       include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        parent: {
+          select: { id: true, name: true },
+        },
+        children: {
+          select: { id: true, name: true },
+        },
         employees: {
           include: {
             user: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+            manager: {
               select: { id: true, firstName: true, lastName: true, email: true },
             },
           },
@@ -148,6 +240,16 @@ export class DepartmentsController {
         organizationId: orgId,
         name: dto.name,
         description: dto.description,
+        parentId: dto.parentId,
+        headId: dto.headId,
+      },
+      include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        parent: {
+          select: { id: true, name: true },
+        },
       },
     });
   }
@@ -160,7 +262,67 @@ export class DepartmentsController {
     return this.prisma.department.update({
       where: { id },
       data: dto,
+      include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        parent: {
+          select: { id: true, name: true },
+        },
+      },
     });
+  }
+
+  @Put(':id/head')
+  async setDepartmentHead(
+    @Param('id') id: string,
+    @Body() dto: SetDepartmentHeadDto,
+  ) {
+    return this.prisma.department.update({
+      where: { id },
+      data: { headId: dto.headId },
+      include: {
+        head: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+  }
+
+  @Delete(':id/head')
+  async removeDepartmentHead(@Param('id') id: string) {
+    return this.prisma.department.update({
+      where: { id },
+      data: { headId: null },
+    });
+  }
+
+  @Get(':id/managers')
+  async getDepartmentManagers(@Param('id') id: string) {
+    const employees = await this.prisma.employee.findMany({
+      where: { departmentId: id },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true, role: true },
+        },
+        manager: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+
+    const managers = employees.filter((e) =>
+      e.user.role === 'MANAGER' || e.user.role === 'ADMIN' || e.user.role === 'HR'
+    );
+
+    return managers.map((m) => ({
+      id: m.user.id,
+      firstName: m.user.firstName,
+      lastName: m.user.lastName,
+      email: m.user.email,
+      jobTitle: m.jobTitle,
+      role: m.user.role,
+    }));
   }
 
   @Delete(':id')

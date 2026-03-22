@@ -21,12 +21,55 @@ export class TasksController {
     return this.tasksService.createTask(dto);
   }
 
+  @Get('my-tasks')
+  async getMyTasks(@Request() req: any, @Query('status') status?: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    if (!employee) {
+      return [];
+    }
+
+    return this.tasksService.getEmployeeTasks(employee.id, status);
+  }
+
+  @Get('all')
+  async getAllTasks(
+    @Request() req: any,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'HR')) {
+      return { tasks: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+    }
+
+    return this.tasksService.getAllTasks({
+      status,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
+    });
+  }
+
   @Get('employee/:employeeId')
   getEmployeeTasks(
     @Param('employeeId') employeeId: string,
     @Query('status') status?: string,
   ) {
     return this.tasksService.getEmployeeTasks(employeeId, status);
+  }
+
+  @Post('assign/:employeeId/:planId')
+  assignFromPlan(
+    @Param('employeeId') employeeId: string,
+    @Param('planId') planId: string,
+  ) {
+    return this.tasksService.assignTasksFromPlan(employeeId, planId);
   }
 
   @Get(':id')
@@ -42,26 +85,5 @@ export class TasksController {
   @Post(':id/complete')
   completeTask(@Param('id') id: string) {
     return this.tasksService.completeTask(id);
-  }
-
-  @Post('assign/:employeeId/:planId')
-  assignFromPlan(
-    @Param('employeeId') employeeId: string,
-    @Param('planId') planId: string,
-  ) {
-    return this.tasksService.assignTasksFromPlan(employeeId, planId);
-  }
-
-  @Get('my-tasks')
-  async getMyTasks(@Request() req: any, @Query('status') status?: string) {
-    const employee = await this.prisma.employee.findUnique({
-      where: { userId: req.user.id },
-    });
-
-    if (!employee) {
-      return [];
-    }
-
-    return this.tasksService.getEmployeeTasks(employee.id, status);
   }
 }

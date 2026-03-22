@@ -152,6 +152,29 @@ class ApiClient {
     return this.request<any[]>(`/tasks/my-tasks${status ? `?status=${status}` : ''}`);
   }
 
+  async getAllTasks(params?: { status?: string; page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.page) query.set('page', params.page.toString());
+    if (params?.limit) query.set('limit', params.limit.toString());
+    const queryStr = query.toString();
+    return this.request<{
+      tasks: Array<{
+        id: string;
+        title: string;
+        description?: string;
+        type: string;
+        status: string;
+        dueDate?: string;
+        employee: {
+          id: string;
+          user: { firstName: string; lastName: string; email: string };
+        };
+      }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/tasks/all${queryStr ? `?${queryStr}` : ''}`);
+  }
+
   async updateTask(taskId: string, data: { status?: string }) {
     return this.request(`/tasks/${taskId}`, {
       method: 'PATCH',
@@ -436,11 +459,16 @@ class ApiClient {
       id: string;
       name: string;
       description?: string;
+      parentId?: string;
+      headId?: string;
+      head?: { id: string; firstName: string; lastName: string; email: string };
+      parent?: { id: string; name: string };
       createdAt: string;
       _count: {
         employees: number;
         knowledgeDocuments: number;
         dataSources: number;
+        children: number;
       };
     }>>('/departments');
   }
@@ -478,7 +506,7 @@ class ApiClient {
     }>>(`/departments/${id}/documents`);
   }
 
-  async createDepartment(data: { name: string; description?: string }) {
+  async createDepartment(data: { name: string; description?: string; parentId?: string }) {
     return this.request('/departments', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -494,6 +522,61 @@ class ApiClient {
 
   async deleteDepartment(id: string) {
     return this.request(`/departments/${id}`, { method: 'DELETE' });
+  }
+
+  async setDepartmentHead(departmentId: string, headId: string) {
+    return this.request(`/departments/${departmentId}/head`, {
+      method: 'PUT',
+      body: JSON.stringify({ headId }),
+    });
+  }
+
+  async removeDepartmentHead(departmentId: string) {
+    return this.request(`/departments/${departmentId}/head`, { method: 'DELETE' });
+  }
+
+  async getDepartmentHierarchy() {
+    return this.request<any[]>('/departments/hierarchy');
+  }
+
+  async getMyOrgChart() {
+    return this.request<{
+      employee: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        jobTitle: string;
+      };
+      department: {
+        id: string;
+        name: string;
+        head?: { id: string; firstName: string; lastName: string; email: string };
+        parent?: {
+          id: string;
+          name: string;
+          head?: { id: string; firstName: string; lastName: string; email: string };
+        };
+      };
+      directManager?: { id: string; firstName: string; lastName: string; email: string };
+      managerChain: Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: string;
+        jobTitle?: string;
+        department?: { id: string; name: string };
+      }>;
+      colleagues: Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        jobTitle: string;
+        role: string;
+      }>;
+    }>('/employees/me/org-chart');
   }
 
   async getEmployees(params?: { departmentId?: string; status?: string }) {

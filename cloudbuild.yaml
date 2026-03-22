@@ -15,13 +15,13 @@ steps:
 
   # Build and push frontend
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
+    args:
       - 'build'
       - '--build-arg'
-      - 'NEXT_PUBLIC_API_URL=https://onboarding-backend-${_REGION}-${PROJECT_ID}.a.run.app'
+      - 'VITE_API_URL=https://onboarding-backend-${_CLOUD_RUN_SUFFIX}.a.run.app'
       - '-t'
       - 'gcr.io/$PROJECT_ID/onboarding-frontend:$COMMIT_SHA'
-      - '-t' 
+      - '-t'
       - 'gcr.io/$PROJECT_ID/onboarding-frontend:latest'
       - './frontend'
     id: 'build-frontend'
@@ -91,6 +91,7 @@ steps:
 
 substitutions:
   _REGION: us-central1
+  _CLOUD_RUN_SUFFIX: 867058958787.us-central1
 
 images:
   - 'gcr.io/$PROJECT_ID/onboarding-backend:$COMMIT_SHA'

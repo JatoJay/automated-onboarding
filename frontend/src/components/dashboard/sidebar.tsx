@@ -12,6 +12,7 @@ import {
   Globe,
   BookOpen,
   ChevronDown,
+  GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/chat', label: 'AI Assistant', icon: MessageSquare },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
+  { href: '/org-chart', label: 'My Organization', icon: GitBranch },
 ];
 
 const adminNavItems = [

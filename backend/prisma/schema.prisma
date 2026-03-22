@@ -87,16 +87,22 @@ model User {
   chatMessages     ChatMessage[]
   taskAssignments  Task[]          @relation("AssignedBy")
   createdInvites   EmployeeInvite[]
+  headOfDepartments Department[]   @relation("DepartmentHead")
 }
 
 model Department {
-  id             String   @id @default(cuid())
-  name           String
-  organizationId String
-  description    String?
-  createdAt      DateTime @default(now())
+  id               String   @id @default(cuid())
+  name             String
+  organizationId   String
+  description      String?
+  parentId         String?
+  headId           String?
+  createdAt        DateTime @default(now())
 
   organization       Organization              @relation(fields: [organizationId], references: [id])
+  parent             Department?               @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children           Department[]              @relation("DepartmentHierarchy")
+  head               User?                     @relation("DepartmentHead", fields: [headId], references: [id])
   employees          Employee[]
   onboardingPlans    OnboardingPlan[]
   knowledgeDocuments KnowledgeDocument[]
@@ -105,6 +111,8 @@ model Department {
   employeeInvites    EmployeeInvite[]
 
   @@unique([name, organizationId])
+  @@index([parentId])
+  @@index([headId])
 }
 
 model Employee {

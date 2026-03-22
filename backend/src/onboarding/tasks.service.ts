@@ -48,6 +48,39 @@ export class TasksService {
     });
   }
 
+  async getAllTasks(params: { status?: string; page?: number; limit?: number }) {
+    const { status, page = 1, limit = 10 } = params;
+    const skip = (page - 1) * limit;
+
+    const where = status ? { status: status as any } : {};
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        include: {
+          employee: {
+            include: { user: { select: { firstName: true, lastName: true, email: true } } },
+          },
+          assignedBy: { select: { firstName: true, lastName: true } },
+        },
+        orderBy: [{ status: 'asc' }, { dueDate: 'asc' }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return {
+      tasks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async updateTask(id: string, dto: UpdateTaskDto) {
     const task = await this.prisma.task.findUnique({ where: { id } });
 

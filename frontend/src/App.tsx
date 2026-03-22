@@ -9,6 +9,7 @@ import JoinPage from '@/pages/Join';
 import DashboardPage from '@/pages/Dashboard';
 import ChatPage from '@/pages/Chat';
 import TasksPage from '@/pages/Tasks';
+import OrgChartPage from '@/pages/OrgChart';
 import AdminPage from '@/pages/admin/Admin';
 import KnowledgePage from '@/pages/admin/Knowledge';
 import SourcesPage from '@/pages/admin/Sources';
@@ -55,6 +56,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/org-chart" element={<OrgChartPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/knowledge" element={<KnowledgePage />} />
         <Route path="/admin/sources" element={<SourcesPage />} />
