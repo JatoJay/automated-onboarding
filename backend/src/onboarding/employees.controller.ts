@@ -43,6 +43,11 @@ class CreateEmployeeDto {
   @IsArray()
   @IsString({ each: true })
   accessibleDepartmentIds?: string[];
+
+  @ApiPropertyOptional({ description: 'User role (EMPLOYEE, MANAGER, HR, ADMIN)' })
+  @IsOptional()
+  @IsString()
+  role?: string;
 }
 
 class UpdateEmployeeDto {
@@ -170,6 +175,13 @@ export class EmployeeManagementController {
 
   @Post()
   async createEmployee(@Body() dto: CreateEmployeeDto, @Request() req: any) {
+    if (dto.role) {
+      await this.prisma.user.update({
+        where: { id: dto.userId },
+        data: { role: dto.role as any },
+      });
+    }
+
     const employee = await this.prisma.employee.create({
       data: {
         userId: dto.userId,

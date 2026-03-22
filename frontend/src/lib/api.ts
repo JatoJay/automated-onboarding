@@ -635,6 +635,7 @@ class ApiClient {
     jobTitle: string;
     startDate: string;
     accessibleDepartmentIds?: string[];
+    role?: string;
   }) {
     return this.request('/admin/employees', {
       method: 'POST',
