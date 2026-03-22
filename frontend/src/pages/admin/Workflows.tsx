@@ -123,7 +123,7 @@ export default function WorkflowsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${API_BASE}/admin/workflows/plans/${taskModalPlanId}/tasks`, {
+      const res = await fetch(`${API_BASE}/admin/workflows/plans/${taskModalPlanId}/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,12 +137,19 @@ export default function WorkflowsPage() {
           isRequired: newTask.isRequired,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Failed to add task:', err);
+        alert(`Failed to add task: ${err.message || res.statusText}`);
+        return;
+      }
       setShowTaskModal(false);
       setTaskModalPlanId(null);
       setNewTask(defaultNewTask);
       loadPlans();
     } catch (error) {
       console.error('Failed to add task:', error);
+      alert('Failed to add task. Please try again.');
     }
   };
 
