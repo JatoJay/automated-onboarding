@@ -34,7 +34,7 @@ const statusColors = {
   BLOCKED: 'text-red-500',
 };
 
-export function TaskList({ tasks, showEmployee = false }: { tasks: Task[]; showEmployee?: boolean }) {
+export function TaskList({ tasks, showEmployee = false, readOnly = false }: { tasks: Task[]; showEmployee?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
 
   const updateTask = useMutation({
@@ -101,30 +101,32 @@ export function TaskList({ tasks, showEmployee = false }: { tasks: Task[]; showE
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  {task.status === 'PENDING' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        updateTask.mutate({
-                          id: task.id,
-                          status: 'IN_PROGRESS',
-                        })
-                      }
-                    >
-                      Start
-                    </Button>
-                  )}
-                  {task.status === 'IN_PROGRESS' && (
-                    <Button
-                      size="sm"
-                      onClick={() => completeTask.mutate(task.id)}
-                    >
-                      Complete
-                    </Button>
-                  )}
-                </div>
+                {!readOnly && (
+                  <div className="flex gap-2">
+                    {task.status === 'PENDING' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          updateTask.mutate({
+                            id: task.id,
+                            status: 'IN_PROGRESS',
+                          })
+                        }
+                      >
+                        Start
+                      </Button>
+                    )}
+                    {task.status === 'IN_PROGRESS' && (
+                      <Button
+                        size="sm"
+                        onClick={() => completeTask.mutate(task.id)}
+                      >
+                        Complete
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

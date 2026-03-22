@@ -43,6 +43,7 @@ export default function DashboardPage() {
     queryKey: ['allTasks', 'pending'],
     queryFn: () => api.getAllTasks({ status: 'PENDING', limit: 5 }),
     enabled: isAdmin,
+    refetchInterval: 30000,
   });
 
   const tasks = isAdmin ? (allTasksData?.tasks || []) : myTasks;
@@ -304,7 +305,7 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
-        <TaskList tasks={tasks.slice(0, 5)} />
+        <TaskList tasks={tasks.slice(0, 5)} showEmployee={isAdmin} readOnly={isAdmin} />
       </div>
 
       <Card>

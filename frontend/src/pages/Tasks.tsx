@@ -36,6 +36,7 @@ export default function TasksPage() {
       limit: TASKS_PER_PAGE
     }),
     enabled: isAdmin,
+    refetchInterval: 30000,
   });
 
   const isLoading = isAdmin ? allTasksLoading : myTasksLoading;
@@ -75,7 +76,7 @@ export default function TasksPage() {
         </div>
       ) : (
         <>
-          <TaskList tasks={tasks} showEmployee={isAdmin} />
+          <TaskList tasks={tasks} showEmployee={isAdmin} readOnly={isAdmin} />
 
           {isAdmin && pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Building2, Crown, User, Users, ChevronDown, ChevronUp, Mail, Briefcase } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth';
+import { Building2, Crown, User, Users, ChevronDown, ChevronUp, Mail, Briefcase, AlertCircle } from 'lucide-react';
 
 interface Person {
   id: string;
@@ -114,6 +115,8 @@ export default function OrgChartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showColleagues, setShowColleagues] = useState(false);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'HR';
 
   useEffect(() => {
     loadOrgChart();
@@ -122,7 +125,11 @@ export default function OrgChartPage() {
   const loadOrgChart = async () => {
     try {
       const result = await api.getMyOrgChart();
-      setData(result);
+      if (!result) {
+        setError('no_employee_record');
+      } else {
+        setData(result);
+      }
     } catch (err) {
       console.error('Failed to load org chart:', err);
       setError('Failed to load organization chart');
@@ -137,6 +144,37 @@ export default function OrgChartPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your organization chart...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === 'no_employee_record') {
+    return (
+      <div className="p-8 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
+              <Building2 className="h-8 w-8 text-blue-600" />
+              Organization Chart
+            </h1>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-6 w-6 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <h3 className="font-semibold text-amber-800 mb-2">
+                  {isAdmin ? 'Admin Account' : 'No Employee Profile'}
+                </h3>
+                <p className="text-amber-700">
+                  {isAdmin
+                    ? 'As an administrator, you are not part of the employee org chart. You can view the full organization structure from the Admin > Departments page.'
+                    : 'Your employee profile has not been set up yet. Please contact HR to complete your onboarding.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
