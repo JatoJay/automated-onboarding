@@ -91,7 +91,7 @@ steps:
 
 substitutions:
   _REGION: us-central1
-  _CLOUD_RUN_SUFFIX: 867058958787.us-central1
+  _CLOUD_RUN_SUFFIX: pbv4p5a6zq-uc
 
 images:
   - 'gcr.io/$PROJECT_ID/onboarding-backend:$COMMIT_SHA'
