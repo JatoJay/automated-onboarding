@@ -125,14 +125,14 @@ export default function OrgChartPage() {
   const loadOrgChart = async () => {
     try {
       const result = await api.getMyOrgChart();
-      if (!result) {
+      if (!result || (result as any).noEmployeeRecord) {
         setError('no_employee_record');
       } else {
-        setData(result);
+        setData(result as OrgChartData);
       }
     } catch (err) {
       console.error('Failed to load org chart:', err);
-      setError('Failed to load organization chart');
+      setError('no_employee_record');
     } finally {
       setLoading(false);
     }

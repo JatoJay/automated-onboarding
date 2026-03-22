@@ -137,7 +137,7 @@ export class OnboardingController {
     });
 
     if (!employee) {
-      return null;
+      return { noEmployeeRecord: true };
     }
 
     const buildManagerChain = async (managerId: string | null): Promise<any[]> => {
