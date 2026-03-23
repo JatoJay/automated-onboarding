@@ -26,7 +26,7 @@ const navItems = [
   { href: '/chat', label: 'AI Assistant', icon: MessageSquare },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
   { href: '/forms', label: 'My Forms', icon: ClipboardList },
-  { href: '/help', label: 'Get Help', icon: HelpCircle },
+  { href: '/help', label: 'Get Help', icon: HelpCircle, employeeOnly: true },
   { href: '/org-chart', label: 'My Organization', icon: GitBranch },
 ];
 
@@ -61,26 +61,28 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+        {navItems
+          .filter((item) => !item.employeeOnly || !isAdmin)
+          .map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
 
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
 
         {isAdmin && (
           <>
