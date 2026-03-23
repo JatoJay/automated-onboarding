@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useError } from '@/contexts/ErrorContext';
 import { Mail, UserPlus, Users, Copy, Check, Building2 } from 'lucide-react';
 
 interface Invite {
@@ -37,6 +38,7 @@ interface Department {
 }
 
 export default function EmployeesPage() {
+  const { showConfirm, showError, showSuccess } = useError();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -104,17 +106,25 @@ export default function EmployeesPage() {
       loadData();
     } catch (error) {
       console.error('Failed to create invite:', error);
-      alert('Failed to send invite');
+      showError('Failed to send invite');
     }
   };
 
   const handleRevokeInvite = async (id: string, name: string) => {
-    if (!confirm(`Revoke invite for "${name}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Revoke Invite',
+      message: `Are you sure you want to revoke the invite for "${name}"? They will no longer be able to use the invite link.`,
+      confirmText: 'Revoke',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.revokeInvite(id);
+      showSuccess('Invite revoked successfully');
       loadData();
     } catch (error) {
       console.error('Failed to revoke invite:', error);
+      showError('Failed to revoke invite');
     }
   };
 
@@ -141,7 +151,7 @@ export default function EmployeesPage() {
       loadData();
     } catch (error) {
       console.error('Failed to create directory entry:', error);
-      alert('Failed to create directory entry');
+      showError('Failed to create directory entry');
     }
   };
 
@@ -161,18 +171,25 @@ export default function EmployeesPage() {
       loadData();
     } catch (error) {
       console.error('Failed to update access:', error);
-      alert('Failed to update department access');
+      showError('Failed to update department access');
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete employee "${name}"? This cannot be undone.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Employee',
+      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.deleteEmployee(id);
+      showSuccess('Employee deleted successfully');
       loadData();
     } catch (error) {
       console.error('Failed to delete:', error);
-      alert('Failed to delete employee');
+      showError('Failed to delete employee');
     }
   };
 

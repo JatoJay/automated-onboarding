@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import { X, AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 
 type ErrorType = 'error' | 'success' | 'warning' | 'info';
@@ -9,11 +9,26 @@ interface ErrorState {
   message: string;
 }
 
+interface ConfirmState {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'danger' | 'warning' | 'default';
+}
+
 interface ErrorContextValue {
   showError: (message: string, title?: string) => void;
   showSuccess: (message: string, title?: string) => void;
   showWarning: (message: string, title?: string) => void;
   showInfo: (message: string, title?: string) => void;
+  showConfirm: (options: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'default';
+  }) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -40,8 +55,16 @@ const defaultTitles = {
   info: 'Information',
 };
 
+const confirmVariants = {
+  danger: { button: 'bg-red-600 hover:bg-red-700', icon: 'text-red-600' },
+  warning: { button: 'bg-amber-600 hover:bg-amber-700', icon: 'text-amber-600' },
+  default: { button: 'bg-blue-600 hover:bg-blue-700', icon: 'text-blue-600' },
+};
+
 export function ErrorProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<ErrorState | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
   const show = useCallback((type: ErrorType, message: string, title?: string) => {
     setError({ type, title: title || defaultTitles[type], message });
@@ -53,8 +76,31 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
   const showInfo = useCallback((message: string, title?: string) => show('info', message, title), [show]);
   const clearError = useCallback(() => setError(null), []);
 
+  const showConfirm = useCallback((options: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'default';
+  }): Promise<boolean> => {
+    return new Promise((resolve) => {
+      resolveRef.current = resolve;
+      setConfirm(options);
+    });
+  }, []);
+
+  const handleConfirm = useCallback((result: boolean) => {
+    if (resolveRef.current) {
+      resolveRef.current(result);
+      resolveRef.current = null;
+    }
+    setConfirm(null);
+  }, []);
+
+  const variant = confirm?.variant || 'default';
+
   return (
-    <ErrorContext.Provider value={{ showError, showSuccess, showWarning, showInfo, clearError }}>
+    <ErrorContext.Provider value={{ showError, showSuccess, showWarning, showInfo, showConfirm, clearError }}>
       {children}
       {error && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={clearError}>
@@ -86,6 +132,38 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
                 className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            className="relative w-full max-w-md mx-4 p-6 rounded-lg shadow-xl border bg-white border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <AlertTriangle className={`h-6 w-6 flex-shrink-0 ${confirmVariants[variant].icon}`} />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg text-gray-900">
+                  {confirm.title}
+                </h3>
+                <p className="mt-2 text-gray-600">{confirm.message}</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => handleConfirm(false)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                {confirm.cancelText || 'Cancel'}
+              </button>
+              <button
+                onClick={() => handleConfirm(true)}
+                className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors ${confirmVariants[variant].button}`}
+              >
+                {confirm.confirmText || 'Confirm'}
               </button>
             </div>
           </div>
