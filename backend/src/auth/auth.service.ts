@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
@@ -14,6 +15,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -149,6 +151,22 @@ export class AuthService {
 
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const inviteLink = `${frontendUrl}/join?token=${invite.token}`;
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
+    this.emailService.sendInviteEmail({
+      to: invite.email,
+      firstName: invite.firstName,
+      lastName: invite.lastName,
+      inviteLink,
+      organizationName: org?.name || 'Your Company',
+      department: invite.department.name,
+      jobTitle: invite.jobTitle,
+      startDate: invite.startDate,
+    });
 
     return {
       id: invite.id,

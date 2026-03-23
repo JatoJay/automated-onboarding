@@ -1,13 +1,19 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { CreateHelpRequestDto, UpdateHelpRequestDto, CreateReplyDto } from './dto/create-help-request.dto';
 
 @Injectable()
 export class HelpRequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+    private configService: ConfigService,
+  ) {}
 
   async create(employeeId: string, organizationId: string, dto: CreateHelpRequestDto) {
-    return this.prisma.helpRequest.create({
+    const helpRequest = await this.prisma.helpRequest.create({
       data: {
         organizationId,
         employeeId,
@@ -26,6 +32,31 @@ export class HelpRequestsService {
         task: { select: { id: true, title: true, type: true } },
       },
     });
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        organizationId,
+        role: { in: ['HR', 'ADMIN', 'ORG_ADMIN'] },
+      },
+      select: { email: true },
+    });
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const requestUrl = `${frontendUrl}/admin/help-requests/${helpRequest.id}`;
+
+    if (helpRequest.employee?.user) {
+      for (const admin of admins) {
+        this.emailService.sendHelpRequestNotification({
+          to: admin.email,
+          employeeName: `${helpRequest.employee.user.firstName} ${helpRequest.employee.user.lastName}`,
+          subject: helpRequest.subject,
+          category: helpRequest.category,
+          requestUrl,
+        });
+      }
+    }
+
+    return helpRequest;
   }
 
   async getMyRequests(employeeId: string) {
@@ -154,6 +185,34 @@ export class HelpRequestsService {
       await this.prisma.helpRequest.update({
         where: { id: helpRequestId },
         data: { status: 'IN_PROGRESS' },
+      });
+    }
+
+    const helpRequestWithEmployee = await this.prisma.helpRequest.findUnique({
+      where: { id: helpRequestId },
+      include: {
+        employee: {
+          include: {
+            user: { select: { id: true, email: true, firstName: true } },
+          },
+        },
+      },
+    });
+
+    const replier = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (helpRequestWithEmployee?.employee?.user && helpRequestWithEmployee.employee.user.id !== userId) {
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+      this.emailService.sendHelpRequestReplyNotification({
+        to: helpRequestWithEmployee.employee.user.email,
+        employeeName: helpRequestWithEmployee.employee.user.firstName,
+        replierName: `${replier?.firstName || 'Someone'} ${replier?.lastName || ''}`.trim(),
+        subject: request.subject,
+        replyPreview: dto.message.substring(0, 150) + (dto.message.length > 150 ? '...' : ''),
+        requestUrl: `${frontendUrl}/help`,
       });
     }
 

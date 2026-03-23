@@ -9,6 +9,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { FormsModule } from './forms/forms.module';
 import { HelpRequestsModule } from './help-requests/help-requests.module';
+import { EmailModule } from './email/email.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { PrismaModule } from './common/prisma/prisma.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    EmailModule,
     AuthModule,
     OnboardingModule,
     AiModule,
