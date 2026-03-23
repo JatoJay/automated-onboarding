@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { CreateTaskTemplateDto } from './dto/create-task-template.dto';
 
@@ -34,7 +36,13 @@ const STANDARD_MILESTONES: MilestoneTemplate[] = [
 
 @Injectable()
 export class WorkflowService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(WorkflowService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+    private configService: ConfigService,
+  ) {}
 
   async createPlan(dto: CreatePlanDto) {
     return this.prisma.onboardingPlan.create({
@@ -292,5 +300,72 @@ export class WorkflowService {
       planName: plan.name,
       tasksCreated: tasks.length,
     };
+  }
+
+  async sendTaskReminders() {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const twoDaysOut = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+    const upcomingTasks = await this.prisma.task.findMany({
+      where: {
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        dueDate: {
+          gte: now,
+          lte: twoDaysOut,
+        },
+      },
+      include: {
+        employee: {
+          include: {
+            user: { select: { email: true, firstName: true } },
+          },
+        },
+      },
+    });
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    let sentCount = 0;
+
+    for (const task of upcomingTasks) {
+      if (!task.employee?.user?.email) continue;
+
+      const isDueTomorrow = task.dueDate && task.dueDate <= tomorrow;
+
+      this.logger.log(`Sending reminder for task "${task.title}" to ${task.employee.user.email}`);
+
+      await this.emailService.sendTaskReminderEmail({
+        to: task.employee.user.email,
+        firstName: task.employee.user.firstName,
+        taskTitle: task.title,
+        dueDate: task.dueDate!,
+        taskUrl: `${frontendUrl}/tasks`,
+      });
+
+      sentCount++;
+    }
+
+    this.logger.log(`Sent ${sentCount} task reminder emails`);
+    return { sent: sentCount, tasks: upcomingTasks.length };
+  }
+
+  async getOverdueTasks() {
+    const now = new Date();
+
+    return this.prisma.task.findMany({
+      where: {
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        dueDate: { lt: now },
+      },
+      include: {
+        employee: {
+          include: {
+            user: { select: { firstName: true, lastName: true, email: true } },
+            department: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
   }
 }

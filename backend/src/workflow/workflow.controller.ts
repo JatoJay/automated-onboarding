@@ -70,4 +70,14 @@ export class WorkflowController {
   ) {
     return this.workflowService.assignStandardPlanToEmployee(employeeId, body.planId);
   }
+
+  @Post('send-task-reminders')
+  sendTaskReminders() {
+    return this.workflowService.sendTaskReminders();
+  }
+
+  @Get('overdue-tasks')
+  getOverdueTasks() {
+    return this.workflowService.getOverdueTasks();
+  }
 }
