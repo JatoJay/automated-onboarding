@@ -51,7 +51,7 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -59,8 +59,24 @@ export class AuthService {
         firstName: true,
         lastName: true,
         role: true,
+        organizationId: true,
+        employee: {
+          select: { id: true },
+        },
       },
     });
+
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      organizationId: user.organizationId,
+      employeeId: user.employee?.id || null,
+    };
   }
 
   private generateTokens(userId: string, email: string, role: string) {
