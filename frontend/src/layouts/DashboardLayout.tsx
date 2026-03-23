@@ -1,5 +1,6 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from '@/components/dashboard/sidebar';
+import { NotificationBell } from '@/components/dashboard/notification-bell';
 import { useAuthStore } from '@/stores/auth';
 
 export function DashboardLayout() {
@@ -20,9 +21,14 @@ export function DashboardLayout() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-14 border-b flex items-center justify-end px-6 bg-background">
+          <NotificationBell />
+        </header>
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

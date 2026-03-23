@@ -1029,6 +1029,10 @@ class ApiClient {
       body: JSON.stringify({ message }),
     });
   }
+
+  async getNotifications() {
+    return this.request<{ count: number; type: string }>('/help-requests/notifications');
+  }
 }
 
 export interface FormField {

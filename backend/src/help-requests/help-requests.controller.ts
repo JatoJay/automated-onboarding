@@ -28,6 +28,17 @@ export class HelpRequestsController {
     return this.helpRequestsService.getMyRequests(req.user.employeeId);
   }
 
+  @Get('notifications')
+  async getNotifications(@Request() req: any) {
+    const isAdmin = ['HR', 'ADMIN', 'ORG_ADMIN'].includes(req.user.role);
+    return this.helpRequestsService.getNotificationCount(
+      req.user.id,
+      req.user.employeeId,
+      req.user.organizationId,
+      isAdmin,
+    );
+  }
+
   @Get(':id')
   async getRequest(@Request() req: any, @Param('id') id: string) {
     return this.helpRequestsService.getRequest(id, req.user.id, req.user.organizationId!);

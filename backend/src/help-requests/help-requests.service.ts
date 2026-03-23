@@ -176,4 +176,39 @@ export class HelpRequestsService {
 
     return { open, inProgress, resolvedToday, total };
   }
+
+  async getNotificationCount(userId: string, employeeId: string | null, organizationId: string, isAdmin: boolean) {
+    if (isAdmin) {
+      const openRequests = await this.prisma.helpRequest.count({
+        where: { organizationId, status: 'OPEN' },
+      });
+      return { count: openRequests, type: 'admin' };
+    }
+
+    if (!employeeId) {
+      return { count: 0, type: 'employee' };
+    }
+
+    const requestsWithNewReplies = await this.prisma.helpRequest.findMany({
+      where: {
+        employeeId,
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
+      },
+      include: {
+        replies: {
+          where: {
+            userId: { not: userId },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    const unreadCount = requestsWithNewReplies.filter(
+      (r) => r.replies.length > 0
+    ).length;
+
+    return { count: unreadCount, type: 'employee' };
+  }
 }
