@@ -1,5 +1,3 @@
-
-
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useError } from '@/contexts/ErrorContext';
 
 interface Task {
   id: string;
@@ -40,6 +39,7 @@ const statusColors = {
 export function TaskList({ tasks, showEmployee = false, readOnly = false }: { tasks: Task[]; showEmployee?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { showError, showSuccess } = useError();
   const [helpTaskId, setHelpTaskId] = useState<string | null>(null);
   const [helpDescription, setHelpDescription] = useState('');
   const [submittingHelp, setSubmittingHelp] = useState(false);
@@ -56,10 +56,11 @@ export function TaskList({ tasks, showEmployee = false, readOnly = false }: { ta
       });
       setHelpTaskId(null);
       setHelpDescription('');
+      showSuccess('Your help request has been submitted. You will be notified when someone responds.', 'Help Request Submitted');
       navigate('/help');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create help request:', error);
-      alert('Failed to submit help request');
+      showError(error.message || 'Failed to submit help request. Please try again.');
     } finally {
       setSubmittingHelp(false);
     }

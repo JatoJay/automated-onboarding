@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { HelpRequestsService } from './help-requests.service';
 import { CreateHelpRequestDto, UpdateHelpRequestDto, CreateReplyDto } from './dto/create-help-request.dto';
@@ -13,6 +13,9 @@ export class HelpRequestsController {
 
   @Post()
   async create(@Request() req: any, @Body() dto: CreateHelpRequestDto) {
+    if (!req.user.employeeId) {
+      throw new BadRequestException('Only employees can create help requests');
+    }
     return this.helpRequestsService.create(
       req.user.employeeId,
       req.user.organizationId!,

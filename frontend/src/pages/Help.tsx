@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import type { HelpRequest, HelpRequestReply } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useError } from '@/contexts/ErrorContext';
 import {
   HelpCircle,
   Plus,
@@ -31,6 +32,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function HelpPage() {
+  const { showError, showSuccess } = useError();
   const [requests, setRequests] = useState<HelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -48,8 +50,9 @@ export default function HelpPage() {
     try {
       const data = await api.getMyHelpRequests();
       setRequests(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load help requests:', error);
+      showError(error.message || 'Failed to load your help requests');
     } finally {
       setLoading(false);
     }
@@ -64,10 +67,11 @@ export default function HelpPage() {
       await api.createHelpRequest(newRequest);
       setShowCreate(false);
       setNewRequest({ category: 'QUESTION', subject: '', description: '' });
+      showSuccess('Your help request has been submitted successfully!');
       loadRequests();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create help request:', error);
-      alert('Failed to submit request. Please try again.');
+      showError(error.message || 'Failed to submit request. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -85,8 +89,9 @@ export default function HelpPage() {
       });
       setReplyMessage('');
       loadRequests();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to send reply:', error);
+      showError(error.message || 'Failed to send reply. Please try again.');
     } finally {
       setSendingReply(false);
     }
@@ -96,8 +101,9 @@ export default function HelpPage() {
     try {
       const full = await api.getHelpRequest(request.id);
       setSelectedRequest(full);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load request:', error);
+      showError(error.message || 'Failed to load request details');
     }
   };
 
