@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 
@@ -7,9 +7,18 @@ export class OnboardingService {
   constructor(private prisma: PrismaService) {}
 
   async createEmployee(dto: CreateEmployeeDto) {
+    if (!dto.userId && (!dto.firstName || !dto.lastName || !dto.email)) {
+      throw new BadRequestException(
+        'Directory entries require firstName, lastName, and email',
+      );
+    }
+
     const employee = await this.prisma.employee.create({
       data: {
-        userId: dto.userId,
+        userId: dto.userId || null,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
         departmentId: dto.departmentId,
         managerId: dto.managerId,
         jobTitle: dto.jobTitle,
@@ -83,7 +92,7 @@ export class OnboardingService {
         ...(filters?.status && { onboardingStatus: filters.status as any }),
       },
       include: {
-        user: { select: { email: true, firstName: true, lastName: true } },
+        user: { select: { email: true, firstName: true, lastName: true, role: true } },
         department: true,
       },
       orderBy: { startDate: 'desc' },

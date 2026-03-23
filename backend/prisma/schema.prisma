@@ -68,6 +68,8 @@ model Organization {
   knowledgeDocuments KnowledgeDocument[]
   dataSources        DataSource[]
   employeeInvites    EmployeeInvite[]
+  forms              Form[]
+  helpRequests       HelpRequest[]
 }
 
 model User {
@@ -88,6 +90,9 @@ model User {
   taskAssignments  Task[]          @relation("AssignedBy")
   createdInvites   EmployeeInvite[]
   headOfDepartments Department[]   @relation("DepartmentHead")
+  createdForms     Form[]
+  assignedHelpRequests HelpRequest[] @relation("HelpRequestAssignee")
+  helpRequestReplies   HelpRequestReply[]
 }
 
 model Department {
@@ -109,6 +114,7 @@ model Department {
   dataSources        DataSource[]
   employeeAccess     EmployeeDepartmentAccess[]
   employeeInvites    EmployeeInvite[]
+  forms              Form[]
 
   @@unique([name, organizationId])
   @@index([parentId])
@@ -117,20 +123,25 @@ model Department {
 
 model Employee {
   id               String           @id @default(cuid())
-  userId           String           @unique
+  userId           String?          @unique
   departmentId     String
   managerId        String?
   jobTitle         String
   startDate        DateTime
   onboardingStatus OnboardingStatus @default(NOT_STARTED)
+  firstName        String?
+  lastName         String?
+  email            String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  user             User                       @relation(fields: [userId], references: [id])
+  user             User?                      @relation(fields: [userId], references: [id])
   department       Department                 @relation(fields: [departmentId], references: [id])
   manager          User?                      @relation("ManagerRelation", fields: [managerId], references: [id])
   tasks            Task[]
   departmentAccess EmployeeDepartmentAccess[]
+  formSubmissions  FormSubmission[]
+  helpRequests     HelpRequest[]
 }
 
 model EmployeeDepartmentAccess {
@@ -171,11 +182,19 @@ model TaskTemplate {
   durationDays     Int      @default(1)
   order            Int      @default(0)
   isRequired       Boolean  @default(true)
+  attachedFormId   String?
+  attachedDocId    String?
+  attachedUrl      String?
   createdAt        DateTime @default(now())
 
-  onboardingPlan OnboardingPlan @relation(fields: [onboardingPlanId], references: [id])
-  dependencies   TaskTemplate[] @relation("TaskDependencies")
-  dependentOn    TaskTemplate[] @relation("TaskDependencies")
+  onboardingPlan OnboardingPlan     @relation(fields: [onboardingPlanId], references: [id])
+  dependencies   TaskTemplate[]     @relation("TaskDependencies")
+  dependentOn    TaskTemplate[]     @relation("TaskDependencies")
+  attachedForm   Form?              @relation(fields: [attachedFormId], references: [id])
+  attachedDoc    KnowledgeDocument? @relation(fields: [attachedDocId], references: [id])
+
+  @@index([attachedFormId])
+  @@index([attachedDocId])
 }
 
 model Task {
@@ -192,8 +211,9 @@ model Task {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  assignedBy User?    @relation("AssignedBy", fields: [assignedById], references: [id])
+  employee     Employee      @relation(fields: [employeeId], references: [id])
+  assignedBy   User?         @relation("AssignedBy", fields: [assignedById], references: [id])
+  helpRequests HelpRequest[]
 }
 
 model ChatMessage {
@@ -245,10 +265,11 @@ model KnowledgeDocument {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  department   Department?   @relation(fields: [departmentId], references: [id])
-  dataSource   DataSource?   @relation(fields: [dataSourceId], references: [id])
-  chunks       DocumentChunk[]
+  organization  Organization    @relation(fields: [organizationId], references: [id])
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  dataSource    DataSource?     @relation(fields: [dataSourceId], references: [id])
+  chunks        DocumentChunk[]
+  taskTemplates TaskTemplate[]
 
   @@index([departmentId])
   @@index([organizationId, departmentId])
@@ -291,4 +312,134 @@ model EmployeeInvite {
 
   @@index([token])
   @@index([email])
+}
+
+enum FormStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum HelpRequestStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum HelpRequestCategory {
+  TASK_BLOCKED
+  QUESTION
+  TECHNICAL_ISSUE
+  ACCESS_REQUEST
+  OTHER
+}
+
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  FILE
+  EMAIL
+  PHONE
+}
+
+model Form {
+  id             String     @id @default(cuid())
+  organizationId String
+  departmentId   String?
+  name           String
+  description    String?
+  isOrgWide      Boolean    @default(true)
+  status         FormStatus @default(DRAFT)
+  createdById    String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  department   Department?      @relation(fields: [departmentId], references: [id])
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  fields         FormField[]
+  submissions    FormSubmission[]
+  taskTemplates  TaskTemplate[]
+
+  @@index([organizationId])
+  @@index([departmentId])
+}
+
+model FormField {
+  id           String        @id @default(cuid())
+  formId       String
+  label        String
+  type         FormFieldType
+  placeholder  String?
+  helpText     String?
+  required     Boolean       @default(false)
+  options      Json?
+  validation   Json?
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  employeeId  String
+  data        Json
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  form     Form     @relation(fields: [formId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([formId, employeeId])
+  @@index([formId])
+  @@index([employeeId])
+}
+
+model HelpRequest {
+  id             String              @id @default(cuid())
+  organizationId String
+  employeeId     String
+  taskId         String?
+  category       HelpRequestCategory
+  subject        String
+  description    String
+  status         HelpRequestStatus   @default(OPEN)
+  assignedToId   String?
+  resolvedAt     DateTime?
+  resolution     String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  task         Task?        @relation(fields: [taskId], references: [id])
+  assignedTo   User?        @relation("HelpRequestAssignee", fields: [assignedToId], references: [id])
+  replies      HelpRequestReply[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model HelpRequestReply {
+  id            String   @id @default(cuid())
+  helpRequestId String
+  userId        String
+  message       String
+  createdAt     DateTime @default(now())
+
+  helpRequest HelpRequest @relation(fields: [helpRequestId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([helpRequestId])
 }

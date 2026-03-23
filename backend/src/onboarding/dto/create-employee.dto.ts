@@ -1,10 +1,26 @@
-import { IsString, IsDateString, IsOptional } from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsEmail, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEmployeeDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'User ID for active employees with login access' })
+  @IsOptional()
   @IsString()
-  userId: string;
+  userId?: string;
+
+  @ApiPropertyOptional({ description: 'First name for directory-only employees' })
+  @ValidateIf((o) => !o.userId)
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional({ description: 'Last name for directory-only employees' })
+  @ValidateIf((o) => !o.userId)
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({ description: 'Email for directory-only employees' })
+  @ValidateIf((o) => !o.userId)
+  @IsEmail()
+  email?: string;
 
   @ApiProperty()
   @IsString()

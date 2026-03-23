@@ -51,7 +51,10 @@ export class WorkflowService {
     const plan = await this.prisma.onboardingPlan.findUnique({
       where: { id },
       include: {
-        taskTemplates: { orderBy: { order: 'asc' } },
+        taskTemplates: {
+          orderBy: { order: 'asc' },
+          include: { attachedForm: true, attachedDoc: true },
+        },
         department: true,
       },
     });
@@ -68,7 +71,10 @@ export class WorkflowService {
       where: departmentId ? { departmentId } : {},
       include: {
         department: true,
-        taskTemplates: { orderBy: { order: 'asc' } },
+        taskTemplates: {
+          orderBy: { order: 'asc' },
+          include: { attachedForm: true, attachedDoc: true },
+        },
         _count: { select: { taskTemplates: true } },
       },
       orderBy: { name: 'asc' },
@@ -99,6 +105,13 @@ export class WorkflowService {
         durationDays: dto.durationDays || 1,
         order: (maxOrder._max.order || 0) + 1,
         isRequired: dto.isRequired ?? true,
+        attachedFormId: dto.attachedFormId,
+        attachedDocId: dto.attachedDocId,
+        attachedUrl: dto.attachedUrl,
+      },
+      include: {
+        attachedForm: true,
+        attachedDoc: true,
       },
     });
   }

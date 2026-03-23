@@ -144,6 +144,11 @@ export class IngestionController {
     return this.ingestionService.getDocumentStatus(documentId);
   }
 
+  @Post('reindex-failed')
+  reindexFailed(@Param('organizationId') organizationId: string) {
+    return this.ingestionService.reindexFailed(organizationId);
+  }
+
   @Post(':documentId/reindex')
   reindexDocument(@Param('documentId') documentId: string) {
     return this.ingestionService.reindexDocument(documentId);

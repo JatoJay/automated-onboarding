@@ -186,7 +186,7 @@ export class OnboardingController {
     const colleagues = await this.prisma.employee.findMany({
       where: {
         departmentId: employee.departmentId,
-        userId: { not: req.user.id },
+        id: { not: employee.id },
       },
       include: {
         user: {
@@ -198,10 +198,10 @@ export class OnboardingController {
 
     return {
       employee: {
-        id: employee.user.id,
-        firstName: employee.user.firstName,
-        lastName: employee.user.lastName,
-        email: employee.user.email,
+        id: employee.user?.id || employee.id,
+        firstName: employee.user?.firstName || employee.firstName || '',
+        lastName: employee.user?.lastName || employee.lastName || '',
+        email: employee.user?.email || employee.email || '',
         jobTitle: employee.jobTitle,
       },
       department: {
@@ -217,12 +217,12 @@ export class OnboardingController {
       directManager: employee.manager,
       managerChain,
       colleagues: colleagues.map((c) => ({
-        id: c.user.id,
-        firstName: c.user.firstName,
-        lastName: c.user.lastName,
-        email: c.user.email,
+        id: c.user?.id || c.id,
+        firstName: c.user?.firstName || c.firstName || '',
+        lastName: c.user?.lastName || c.lastName || '',
+        email: c.user?.email || c.email || '',
         jobTitle: c.jobTitle,
-        role: c.user.role,
+        role: c.user?.role,
       })),
     };
   }

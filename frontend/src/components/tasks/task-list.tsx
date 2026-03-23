@@ -1,10 +1,13 @@
 
 
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Circle, Clock, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, Circle, Clock, AlertCircle, HelpCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface Task {
@@ -36,6 +39,31 @@ const statusColors = {
 
 export function TaskList({ tasks, showEmployee = false, readOnly = false }: { tasks: Task[]; showEmployee?: boolean; readOnly?: boolean }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [helpTaskId, setHelpTaskId] = useState<string | null>(null);
+  const [helpDescription, setHelpDescription] = useState('');
+  const [submittingHelp, setSubmittingHelp] = useState(false);
+
+  const handleRequestHelp = async (task: Task) => {
+    if (!helpDescription.trim()) return;
+    setSubmittingHelp(true);
+    try {
+      await api.createHelpRequest({
+        category: 'TASK_BLOCKED',
+        subject: `Help needed: ${task.title}`,
+        description: helpDescription,
+        taskId: task.id,
+      });
+      setHelpTaskId(null);
+      setHelpDescription('');
+      navigate('/help');
+    } catch (error) {
+      console.error('Failed to create help request:', error);
+      alert('Failed to submit help request');
+    } finally {
+      setSubmittingHelp(false);
+    }
+  };
 
   const updateTask = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -103,6 +131,17 @@ export function TaskList({ tasks, showEmployee = false, readOnly = false }: { ta
                 </div>
                 {!readOnly && (
                   <div className="flex gap-2">
+                    {task.status !== 'COMPLETED' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setHelpTaskId(helpTaskId === task.id ? null : task.id)}
+                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      >
+                        <HelpCircle className="h-4 w-4 mr-1" />
+                        Help
+                      </Button>
+                    )}
                     {task.status === 'PENDING' && (
                       <Button
                         size="sm"
@@ -128,6 +167,38 @@ export function TaskList({ tasks, showEmployee = false, readOnly = false }: { ta
                   </div>
                 )}
               </div>
+              {helpTaskId === task.id && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800 mb-2">What do you need help with?</p>
+                  <textarea
+                    value={helpDescription}
+                    onChange={(e) => setHelpDescription(e.target.value)}
+                    placeholder="Describe your issue or what's blocking you..."
+                    className="w-full px-3 py-2 border rounded-lg text-sm resize-none"
+                    rows={3}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setHelpTaskId(null);
+                        setHelpDescription('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleRequestHelp(task)}
+                      disabled={submittingHelp || !helpDescription.trim()}
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      {submittingHelp ? 'Submitting...' : 'Submit Help Request'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         );

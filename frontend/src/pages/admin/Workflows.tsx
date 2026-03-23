@@ -3,9 +3,18 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, Link, FileText, ClipboardList } from 'lucide-react';
+import { api } from '@/lib/api';
+import type { Form } from '@/lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+interface KnowledgeDocument {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+}
 
 interface TaskTemplate {
   id: string;
@@ -15,6 +24,11 @@ interface TaskTemplate {
   daysFromStart: number;
   order: number;
   isRequired: boolean;
+  attachedFormId?: string;
+  attachedDocId?: string;
+  attachedUrl?: string;
+  attachedForm?: { id: string; name: string };
+  attachedDoc?: { id: string; title: string };
 }
 
 interface OnboardingPlan {
@@ -34,6 +48,9 @@ interface NewTask {
   type: string;
   daysFromStart: number;
   isRequired: boolean;
+  attachedFormId?: string;
+  attachedDocId?: string;
+  attachedUrl?: string;
 }
 
 const defaultNewTask: NewTask = {
@@ -42,6 +59,9 @@ const defaultNewTask: NewTask = {
   type: 'DOCUMENT',
   daysFromStart: 0,
   isRequired: true,
+  attachedFormId: undefined,
+  attachedDocId: undefined,
+  attachedUrl: '',
 };
 
 export default function WorkflowsPage() {
@@ -53,10 +73,26 @@ export default function WorkflowsPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskModalPlanId, setTaskModalPlanId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState<NewTask>(defaultNewTask);
+  const [forms, setForms] = useState<Form[]>([]);
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
 
   useEffect(() => {
     loadPlans();
+    loadFormsAndDocs();
   }, []);
+
+  const loadFormsAndDocs = async () => {
+    try {
+      const [formsData, docsData] = await Promise.all([
+        api.getForms({ status: 'ACTIVE' }),
+        api.getDocuments({ status: 'INDEXED', limit: 100 }),
+      ]);
+      setForms(formsData);
+      setDocuments(docsData.documents);
+    } catch (error) {
+      console.error('Failed to load forms/docs:', error);
+    }
+  };
 
   const loadPlans = async () => {
     try {
@@ -135,6 +171,9 @@ export default function WorkflowsPage() {
           type: newTask.type,
           daysFromStart: newTask.daysFromStart,
           isRequired: newTask.isRequired,
+          attachedFormId: newTask.attachedFormId || undefined,
+          attachedDocId: newTask.attachedDocId || undefined,
+          attachedUrl: newTask.attachedUrl || undefined,
         }),
       });
       if (!res.ok) {
@@ -258,6 +297,34 @@ export default function WorkflowsPage() {
                             Day {task.daysFromStart}
                             {task.isRequired && ' (Required)'}
                           </div>
+                          {(task.attachedForm || task.attachedDoc || task.attachedUrl) && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {task.attachedForm && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                                  <ClipboardList className="h-3 w-3" />
+                                  {task.attachedForm.name}
+                                </span>
+                              )}
+                              {task.attachedDoc && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+                                  <FileText className="h-3 w-3" />
+                                  {task.attachedDoc.title}
+                                </span>
+                              )}
+                              {task.attachedUrl && (
+                                <a
+                                  href={task.attachedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs hover:bg-purple-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Link className="h-3 w-3" />
+                                  Link
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <Button
                           variant="ghost"
@@ -426,6 +493,66 @@ export default function WorkflowsPage() {
                   <label htmlFor="isRequired" className="text-sm font-medium">
                     Required task
                   </label>
+                </div>
+
+                <div className="border-t pt-4 mt-2">
+                  <h3 className="text-sm font-medium mb-3">Attachments (Optional)</h3>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Attach Form
+                      </label>
+                      <select
+                        value={newTask.attachedFormId || ''}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, attachedFormId: e.target.value || undefined })
+                        }
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">No form attached</option>
+                        {forms.map((form) => (
+                          <option key={form.id} value={form.id}>
+                            {form.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Attach Document
+                      </label>
+                      <select
+                        value={newTask.attachedDocId || ''}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, attachedDocId: e.target.value || undefined })
+                        }
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">No document attached</option>
+                        {documents.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.title} ({doc.category})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Attach URL
+                      </label>
+                      <Input
+                        type="url"
+                        value={newTask.attachedUrl || ''}
+                        onChange={(e) =>
+                          setNewTask({ ...newTask, attachedUrl: e.target.value })
+                        }
+                        placeholder="https://example.com/resource"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-6">

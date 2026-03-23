@@ -108,7 +108,10 @@ class ApiClient {
       email: string;
       firstName: string;
       lastName: string;
-      department: { name: string };
+      jobTitle: string;
+      token: string;
+      startDate: string;
+      department: { id: string; name: string };
       createdBy: { firstName: string; lastName: string };
       expiresAt: string;
       usedAt: string | null;
@@ -696,7 +699,10 @@ class ApiClient {
   }
 
   async createEmployee(data: {
-    userId: string;
+    userId?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
     departmentId: string;
     managerId?: string;
     jobTitle: string;
@@ -879,6 +885,243 @@ class ApiClient {
       body: JSON.stringify({ planId }),
     });
   }
+
+  async getForms(filters?: { status?: string; departmentId?: string }) {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<Form[]>(`/forms${query}`);
+  }
+
+  async getForm(id: string) {
+    return this.request<Form>(`/forms/${id}`);
+  }
+
+  async createForm(data: CreateFormData) {
+    return this.request<Form>('/forms', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateForm(id: string, data: Partial<CreateFormData> & { status?: string }) {
+    return this.request<Form>(`/forms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteForm(id: string) {
+    return this.request(`/forms/${id}`, { method: 'DELETE' });
+  }
+
+  async addFormField(formId: string, field: FormFieldData) {
+    return this.request<FormField>(`/forms/${formId}/fields`, {
+      method: 'POST',
+      body: JSON.stringify(field),
+    });
+  }
+
+  async updateFormField(fieldId: string, field: Partial<FormFieldData>) {
+    return this.request<FormField>(`/forms/fields/${fieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(field),
+    });
+  }
+
+  async deleteFormField(fieldId: string) {
+    return this.request(`/forms/fields/${fieldId}`, { method: 'DELETE' });
+  }
+
+  async reorderFormFields(formId: string, fieldIds: string[]) {
+    return this.request<Form>(`/forms/${formId}/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ fieldIds }),
+    });
+  }
+
+  async getMyForms() {
+    return this.request<(Form & { isSubmitted: boolean })[]>('/forms/my-forms');
+  }
+
+  async submitForm(formId: string, data: Record<string, any>) {
+    return this.request(`/forms/${formId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ data }),
+    });
+  }
+
+  async getMySubmission(formId: string) {
+    return this.request<FormSubmission | null>(`/forms/${formId}/my-submission`);
+  }
+
+  async getFormSubmissions(formId: string) {
+    return this.request<{ form: Form; submissions: FormSubmission[] }>(`/forms/${formId}/submissions`);
+  }
+
+  async exportFormSubmissions(formId: string, format: 'csv' | 'json' = 'csv') {
+    const response = await fetch(`${API_BASE}/forms/${formId}/export?format=${format}`, {
+      headers: { Authorization: `Bearer ${this.getToken()}` },
+    });
+    if (format === 'json') {
+      return response.json();
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `form_submissions.${format}`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async createHelpRequest(data: { category: string; subject: string; description: string; taskId?: string }) {
+    return this.request<HelpRequest>('/help-requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyHelpRequests() {
+    return this.request<HelpRequest[]>('/help-requests/my');
+  }
+
+  async getHelpRequest(id: string) {
+    return this.request<HelpRequest>(`/help-requests/${id}`);
+  }
+
+  async addHelpRequestReply(requestId: string, message: string) {
+    return this.request<HelpRequestReply>(`/help-requests/${requestId}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  async getAdminHelpRequests(filters?: { status?: string; category?: string }) {
+    const query = new URLSearchParams();
+    if (filters?.status) query.set('status', filters.status);
+    if (filters?.category) query.set('category', filters.category);
+    const queryStr = query.toString();
+    return this.request<HelpRequest[]>(`/admin/help-requests${queryStr ? `?${queryStr}` : ''}`);
+  }
+
+  async getAdminHelpRequestStats() {
+    return this.request<{ open: number; inProgress: number; resolvedToday: number; total: number }>(
+      '/admin/help-requests/stats'
+    );
+  }
+
+  async getAdminHelpRequest(id: string) {
+    return this.request<HelpRequest>(`/admin/help-requests/${id}`);
+  }
+
+  async updateHelpRequest(id: string, data: { status?: string; assignedToId?: string; resolution?: string }) {
+    return this.request<HelpRequest>(`/admin/help-requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async addAdminHelpRequestReply(requestId: string, message: string) {
+    return this.request<HelpRequestReply>(`/admin/help-requests/${requestId}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+}
+
+export interface FormField {
+  id: string;
+  formId: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+  helpText?: string;
+  required: boolean;
+  options?: string[];
+  validation?: Record<string, any>;
+  order: number;
+}
+
+export interface Form {
+  id: string;
+  name: string;
+  description?: string;
+  isOrgWide: boolean;
+  status: string;
+  departmentId?: string;
+  department?: { id: string; name: string };
+  createdBy: { id: string; firstName: string; lastName: string };
+  fields: FormField[];
+  _count: { submissions: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FormSubmission {
+  id: string;
+  formId: string;
+  employeeId: string;
+  data: Record<string, any>;
+  submittedAt: string;
+  employee: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    jobTitle: string;
+    department: { id: string; name: string };
+    user?: { firstName: string; lastName: string; email: string };
+  };
+  form?: Form;
+}
+
+export interface CreateFormData {
+  name: string;
+  description?: string;
+  isOrgWide: boolean;
+  departmentId?: string;
+  fields?: FormFieldData[];
+}
+
+export interface FormFieldData {
+  label: string;
+  type: string;
+  placeholder?: string;
+  helpText?: string;
+  required: boolean;
+  options?: string[];
+  validation?: Record<string, any>;
+  order: number;
+}
+
+export interface HelpRequest {
+  id: string;
+  category: string;
+  subject: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  resolution?: string;
+  employee?: {
+    id: string;
+    user?: { firstName: string; lastName: string; email: string };
+    department?: { id: string; name: string };
+  };
+  task?: { id: string; title: string; type: string; status?: string };
+  assignedTo?: { id: string; firstName: string; lastName: string };
+  replies?: HelpRequestReply[];
+  _count?: { replies: number };
+}
+
+export interface HelpRequestReply {
+  id: string;
+  message: string;
+  createdAt: string;
+  user: { id: string; firstName: string; lastName: string; role: string };
 }
 
 export const api = new ApiClient();

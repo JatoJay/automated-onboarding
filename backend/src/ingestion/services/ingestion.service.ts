@@ -257,6 +257,30 @@ export class IngestionService {
     });
   }
 
+  async reindexFailed(organizationId: string) {
+    const failedDocs = await this.prisma.knowledgeDocument.findMany({
+      where: { organizationId, status: 'FAILED' },
+      select: { id: true, title: true },
+    });
+
+    const results = [];
+    for (const doc of failedDocs) {
+      try {
+        await this.reindexDocument(doc.id);
+        results.push({ id: doc.id, title: doc.title, success: true });
+      } catch (error) {
+        results.push({ id: doc.id, title: doc.title, success: false, error: error.message });
+      }
+    }
+
+    return {
+      total: failedDocs.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results,
+    };
+  }
+
   async deleteDocument(documentId: string) {
     const chunks = await this.prisma.documentChunk.findMany({
       where: { documentId },

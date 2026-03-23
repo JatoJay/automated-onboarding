@@ -154,6 +154,12 @@ export class IngestionSimpleController {
     return this.ingestionService.getCategories(orgId);
   }
 
+  @Post('reindex-failed')
+  async reindexFailed() {
+    const orgId = await this.getOrgId();
+    return this.ingestionService.reindexFailed(orgId);
+  }
+
   @Get(':documentId/status')
   getDocumentStatus(@Param('documentId') documentId: string) {
     return this.ingestionService.getDocumentStatus(documentId);

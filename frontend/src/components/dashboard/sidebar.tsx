@@ -13,6 +13,9 @@ import {
   BookOpen,
   ChevronDown,
   GitBranch,
+  ClipboardList,
+  HelpCircle,
+  Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -22,12 +25,16 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/chat', label: 'AI Assistant', icon: MessageSquare },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
+  { href: '/forms', label: 'My Forms', icon: ClipboardList },
+  { href: '/help', label: 'Get Help', icon: HelpCircle },
   { href: '/org-chart', label: 'My Organization', icon: GitBranch },
 ];
 
 const adminNavItems = [
   { href: '/admin/departments', label: 'Departments', icon: Building2 },
   { href: '/admin/employees', label: 'Employees', icon: Users },
+  { href: '/admin/forms', label: 'Form Builder', icon: ClipboardList },
+  { href: '/admin/help-requests', label: 'Help Requests', icon: Inbox },
   { href: '/admin/knowledge', label: 'Knowledge Base', icon: FileText },
   { href: '/admin/sources', label: 'External Sources', icon: Globe },
   { href: '/admin/workflows', label: 'Workflows', icon: BookOpen },

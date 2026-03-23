@@ -142,9 +142,9 @@ export class DepartmentsController {
           employees: dept.employees.map((e) => ({
             id: e.id,
             userId: e.userId,
-            firstName: e.user.firstName,
-            lastName: e.user.lastName,
-            email: e.user.email,
+            firstName: e.user?.firstName || e.firstName || '',
+            lastName: e.user?.lastName || e.lastName || '',
+            email: e.user?.email || e.email || '',
             jobTitle: e.jobTitle,
             manager: e.manager,
           })),
@@ -312,16 +312,16 @@ export class DepartmentsController {
     });
 
     const managers = employees.filter((e) =>
-      e.user.role === 'MANAGER' || e.user.role === 'ADMIN' || e.user.role === 'HR'
+      e.user && (e.user.role === 'MANAGER' || e.user.role === 'ADMIN' || e.user.role === 'HR')
     );
 
     return managers.map((m) => ({
-      id: m.user.id,
-      firstName: m.user.firstName,
-      lastName: m.user.lastName,
-      email: m.user.email,
+      id: m.user!.id,
+      firstName: m.user!.firstName,
+      lastName: m.user!.lastName,
+      email: m.user!.email,
       jobTitle: m.jobTitle,
-      role: m.user.role,
+      role: m.user!.role,
     }));
   }
 

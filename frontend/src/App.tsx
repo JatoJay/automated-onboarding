@@ -10,14 +10,18 @@ import DashboardPage from '@/pages/Dashboard';
 import ChatPage from '@/pages/Chat';
 import TasksPage from '@/pages/Tasks';
 import OrgChartPage from '@/pages/OrgChart';
+import MyFormsPage from '@/pages/MyForms';
 import AdminPage from '@/pages/admin/Admin';
 import KnowledgePage from '@/pages/admin/Knowledge';
 import SourcesPage from '@/pages/admin/Sources';
 import DepartmentsPage from '@/pages/admin/Departments';
 import EmployeesPage from '@/pages/admin/Employees';
 import WorkflowsPage from '@/pages/admin/Workflows';
+import FormsPage from '@/pages/admin/Forms';
 import AnalyticsPage from '@/pages/admin/Analytics';
 import SettingsPage from '@/pages/admin/Settings';
+import HelpPage from '@/pages/Help';
+import AdminHelpRequestsPage from '@/pages/admin/HelpRequests';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,12 +61,16 @@ function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/org-chart" element={<OrgChartPage />} />
+        <Route path="/forms" element={<MyFormsPage />} />
+        <Route path="/help" element={<HelpPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/knowledge" element={<KnowledgePage />} />
         <Route path="/admin/sources" element={<SourcesPage />} />
         <Route path="/admin/departments" element={<DepartmentsPage />} />
         <Route path="/admin/employees" element={<EmployeesPage />} />
         <Route path="/admin/workflows" element={<WorkflowsPage />} />
+        <Route path="/admin/forms" element={<FormsPage />} />
+        <Route path="/admin/help-requests" element={<AdminHelpRequestsPage />} />
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
         <Route path="/admin/settings" element={<SettingsPage />} />
       </Route>

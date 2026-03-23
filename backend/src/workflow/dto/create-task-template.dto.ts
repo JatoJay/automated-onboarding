@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsInt, IsBoolean, Min } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsInt, IsBoolean, Min, IsUrl } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTaskTemplateDto {
@@ -31,4 +31,19 @@ export class CreateTaskTemplateDto {
   @IsOptional()
   @IsBoolean()
   isRequired?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID of attached form' })
+  @IsOptional()
+  @IsString()
+  attachedFormId?: string;
+
+  @ApiPropertyOptional({ description: 'ID of attached knowledge document' })
+  @IsOptional()
+  @IsString()
+  attachedDocId?: string;
+
+  @ApiPropertyOptional({ description: 'Attached URL' })
+  @IsOptional()
+  @IsString()
+  attachedUrl?: string;
 }
