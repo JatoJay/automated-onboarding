@@ -104,9 +104,10 @@ export default function EmployeesPage() {
         startDate: new Date().toISOString().split('T')[0],
       });
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create invite:', error);
-      showError('Failed to send invite');
+      const message = error?.response?.data?.message || error?.message || 'Failed to send invite';
+      showError(message);
     }
   };
 
